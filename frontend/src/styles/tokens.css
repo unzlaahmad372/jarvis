@@ -1,0 +1,74 @@
+/* JARVIS HUD Design Tokens
+ * Futuristic command-center palette: dark surface, cyan/teal accents.
+ * All components must use these tokens — never hard-code values.
+ */
+
+:root {
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+  --hud-bg:               #050a0f;
+  --hud-surface:          #0a1520;
+  --hud-surface-elevated: #0f1e2e;
+  --hud-surface-hover:    #142436;
+
+  /* ── Lines & borders ──────────────────────────────────────────────────── */
+  --hud-line:             #1a3a5c;
+  --hud-line-bright:      #1e5080;
+
+  /* ── Accent (cyan/teal) ───────────────────────────────────────────────── */
+  --hud-accent:           #00d4ff;
+  --hud-accent-muted:     #0088aa;
+  --hud-accent-dim:       #004466;
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --hud-text-primary:     #c8e8f8;
+  --hud-text-secondary:   #6a9ab8;
+  --hud-text-dim:         #3a6a88;
+  --hud-text-inverse:     #050a0f;
+
+  /* ── Status colors (never rely on color alone — pair with icons/labels) ─ */
+  --hud-success:          #00e676;
+  --hud-warning:          #ffab00;
+  --hud-danger:           #ff3d3d;
+  --hud-info:             #00d4ff;
+  --hud-neutral:          #6a9ab8;
+
+  /* ── Glow effects ─────────────────────────────────────────────────────── */
+  --hud-glow-soft:        0 0 12px rgba(0, 212, 255, 0.15);
+  --hud-glow-strong:      0 0 24px rgba(0, 212, 255, 0.35);
+  --hud-glow-danger:      0 0 12px rgba(255, 61, 61, 0.25);
+
+  /* ── Spacing & geometry ───────────────────────────────────────────────── */
+  --hud-grid-unit:        8px;
+  --hud-radius:           4px;
+  --hud-radius-lg:        8px;
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  --hud-font-mono:        'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --hud-font-ui:          'Inter', 'Segoe UI', system-ui, sans-serif;
+  --hud-font-size-xs:     0.7rem;
+  --hud-font-size-sm:     0.8rem;
+  --hud-font-size-base:   0.9rem;
+  --hud-font-size-lg:     1rem;
+  --hud-font-size-xl:     1.2rem;
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  --hud-motion-fast:      120ms ease;
+  --hud-motion-normal:    240ms ease;
+  --hud-motion-slow:      400ms ease;
+
+  /* ── Z-index layers ───────────────────────────────────────────────────── */
+  --z-base:     1;
+  --z-panel:    10;
+  --z-overlay:  100;
+  --z-modal:    200;
+  --z-toast:    300;
+}
+
+/* Reduced motion — respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --hud-motion-fast:   0ms;
+    --hud-motion-normal: 0ms;
+    --hud-motion-slow:   0ms;
+  }
+}

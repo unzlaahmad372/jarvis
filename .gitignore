@@ -1,0 +1,73 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Secrets — never commit
+.env
+*.env
+!.env.example
+
+# Data directories — user data stays local
+data/database/
+data/indexes/
+data/cache/
+data/inbox/
+data/documents/
+# Keep directory structure
+!data/**/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Coverage / test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+
+# Mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Alembic — keep migrations, ignore generated
+# (migrations are source-controlled)
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Pre-commit
+.pre-commit-cache/

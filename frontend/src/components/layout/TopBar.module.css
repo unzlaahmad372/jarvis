@@ -1,0 +1,84 @@
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--hud-surface);
+  border-bottom: 1px solid var(--hud-line);
+  flex-shrink: 0;
+  z-index: var(--z-panel);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.brandName {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xl);
+  font-weight: 700;
+  color: var(--hud-accent);
+  letter-spacing: 0.15em;
+  text-shadow: var(--hud-glow-soft);
+}
+
+.brandVersion {
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+  font-family: var(--hud-font-mono);
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusChip {
+  font-size: var(--hud-font-size-xs);
+  font-family: var(--hud-font-mono);
+  padding: 2px 8px;
+  border-radius: var(--hud-radius);
+  border: 1px solid currentColor;
+  letter-spacing: 0.08em;
+}
+
+.status_ready {
+  color: var(--hud-success);
+  border-color: var(--hud-success);
+}
+
+.status_unhealthy {
+  color: var(--hud-danger);
+  border-color: var(--hud-danger);
+}
+
+.status_degraded {
+  color: var(--hud-warning);
+  border-color: var(--hud-warning);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modeToggle {
+  background: none;
+  border: 1px solid var(--hud-line);
+  color: var(--hud-text-secondary);
+  padding: 4px 8px;
+  border-radius: var(--hud-radius);
+  cursor: pointer;
+  font-size: var(--hud-font-size-base);
+  transition: color var(--hud-motion-fast), border-color var(--hud-motion-fast);
+}
+
+.modeToggle:hover {
+  color: var(--hud-accent);
+  border-color: var(--hud-accent-muted);
+}

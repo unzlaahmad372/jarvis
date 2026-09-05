@@ -1,0 +1,24 @@
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 28px;
+  padding: 0 16px;
+  background: var(--hud-surface);
+  border-top: 1px solid var(--hud-line);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.item {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.healthy      { color: var(--hud-success); }
+.degraded     { color: var(--hud-warning); }
+.unhealthy    { color: var(--hud-danger); }
+.not_configured { color: var(--hud-text-dim); }
