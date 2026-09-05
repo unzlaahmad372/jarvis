@@ -70,6 +70,10 @@ async def test_client(db_engine: AsyncEngine):  # type: ignore[return]
     application.state.db_engine = db_engine
     application.state.settings = get_settings()
 
+    # Build singleton orchestrator for tests
+    orchestrator = chat_module.build_orchestrator(get_settings())
+    application.state.orchestrator = orchestrator
+
     try:
         async with AsyncClient(
             transport=ASGITransport(app=application), base_url="http://test"

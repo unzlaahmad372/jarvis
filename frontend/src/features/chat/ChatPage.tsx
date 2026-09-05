@@ -244,6 +244,15 @@ export function ChatPage() {
         onComplete(p.conversation_id)
         if (p.plan_steps?.length) {
           setLastPlanSteps(p.plan_steps, p.intent ?? 'GENERAL_CHAT')
+          // Wire confirmation panel: find first step needing approval
+          const pendingStep = p.plan_steps.find(
+            (s) => s.requires_confirmation && s.confirmation_id
+          )
+          if (pendingStep?.confirmation_id) {
+            toolsApi.getConfirmation(pendingStep.confirmation_id)
+              .then((conf) => setPendingConfirmation(conf))
+              .catch(() => { /* confirmation may have expired */ })
+          }
         }
         if (autoSpeak && tts.supported) {
           tts.speak(p.content)
@@ -266,7 +275,7 @@ export function ChatPage() {
       await toolsApi.confirm({
         confirmation_id: pendingConfirmation.confirmation_id,
         tool_name: pendingConfirmation.tool_name,
-        parameters: {},
+        parameters: {},  // backend uses server-stored parameters, not client-supplied
       })
       setPendingConfirmation(null)
     } catch (e) {

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from app.backup.manager import BACKUP_FORMAT_VERSION, BackupManager, _sha256
+from app.backup.manager import BACKUP_FORMAT_VERSION, BackupManager
 from app.backup.restore import RestoreDrill
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -150,8 +150,7 @@ def test_verify_corrupted(manager, tmp_dirs):
 def test_restore_overwrites_db(manager, tmp_dirs):
     backup_dir, db_path = tmp_dirs
     record = manager.create()
-    original_checksum = _sha256(db_path)
-    # Modify the live DB
+    # Modify the live DB after backup
     conn = sqlite3.connect(str(db_path))
     conn.execute("INSERT INTO workspaces VALUES (1, 'modified')")
     conn.commit()
@@ -159,7 +158,11 @@ def test_restore_overwrites_db(manager, tmp_dirs):
     # Restore
     restored = manager.restore(record.backup_id)
     assert restored == db_path
-    assert _sha256(db_path) == original_checksum
+    # Verify the modification is gone (workspace row was added after backup)
+    conn2 = sqlite3.connect(str(db_path))
+    rows = conn2.execute("SELECT * FROM workspaces").fetchall()
+    conn2.close()
+    assert rows == []  # backup had no rows
 
 
 def test_restore_creates_safety_copy(manager, tmp_dirs):

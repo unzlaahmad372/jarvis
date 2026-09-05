@@ -114,11 +114,12 @@ async def _seed_default_workspace() -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan — startup and shutdown."""
     settings = get_settings()
+
+    # Configure logging FIRST so all subsequent calls are formatted correctly
     configure_logging(settings.log_level)
 
-    # ── Secrets validation ────────────────────────────────────────────────────
+    # Secrets validation (logging is now configured)
     from app.core.secrets import validate_secrets
-
     validate_secrets(
         settings.auth_secret_key,
         remote_access_enabled=settings.enable_remote_access,
@@ -151,9 +152,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── Register tools ────────────────────────────────────────────────────────
     _register_tools(settings)
 
+    # ── Build singleton orchestrator (shared InferenceManager semaphore) ──────
+    from app.api.routes.chat import build_orchestrator
+    orchestrator = build_orchestrator(settings)
+
     # Store shared state on app
     app.state.db_engine = engine
     app.state.settings = settings
+    app.state.orchestrator = orchestrator
 
     logger.info("jarvis_ready", host=settings.host, port=settings.port)
 

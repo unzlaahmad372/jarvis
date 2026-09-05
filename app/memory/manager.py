@@ -77,10 +77,12 @@ async def search_memories(
     Phase 3 uses SQL LIKE search. A future phase can add vector similarity.
     """
     wid = workspace_id or await _default_workspace_id(session)
+    # Escape LIKE special characters to prevent wildcard injection
+    safe_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     stmt = (
         select(Memory)
         .where(Memory.workspace_id == wid)
-        .where(Memory.content.ilike(f"%{query}%"))
+        .where(Memory.content.ilike(f"%{safe_query}%"))
         .order_by(Memory.importance.desc(), Memory.updated_at.desc())
         .limit(limit)
     )

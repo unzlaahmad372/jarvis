@@ -159,8 +159,21 @@ class BackupManager:
         )
 
     def _copy_database(self, dest: Path) -> None:
-        """Copy the SQLite database file."""
-        shutil.copy2(self._db_path, dest)
+        """Copy the SQLite database using the sqlite3 backup API.
+
+        This produces a consistent single-file snapshot regardless of WAL state,
+        replacing the previous shutil.copy2 which could yield an inconsistent
+        copy when WAL/SHM files were in use.
+        """
+        import sqlite3
+
+        src_conn = sqlite3.connect(str(self._db_path))
+        dst_conn = sqlite3.connect(str(dest))
+        try:
+            src_conn.backup(dst_conn)
+        finally:
+            dst_conn.close()
+            src_conn.close()
 
     # ── List ──────────────────────────────────────────────────────────────────
 

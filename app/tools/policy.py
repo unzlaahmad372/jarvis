@@ -4,13 +4,15 @@ The LLM proposes. The PolicyEngine decides. Never the other way around.
 
 Rules (in priority order):
   1. DANGEROUS  → always REQUIRES_CONFIRMATION (never auto-approved)
-  2. SENSITIVE  → REQUIRES_CONFIRMATION unless confirmation_id provided
+  2. SENSITIVE  → REQUIRES_CONFIRMATION unless a *validated* confirmation_id is present
   3. LOW_RISK   → ALLOW (configurable to REQUIRES_CONFIRMATION)
   4. READ_ONLY  → ALLOW
 
-Feature flags can disable entire risk tiers (e.g. enable_shell=false blocks
-any tool that would require shell access — enforced at registration time via
-tool naming conventions or explicit flag checks).
+Confirmation validation:
+  confirmation_id is validated against ConfirmationStore.consume() inside
+  ToolExecutor before PolicyEngine is called with confirmed=True.  PolicyEngine
+  itself never trusts a raw confirmation_id string — it only trusts the
+  `confirmed` flag that ToolExecutor sets after successful consume().
 """
 
 from __future__ import annotations
@@ -25,11 +27,33 @@ class PolicyEngine:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    def evaluate(self, request: ToolRequest, risk_level: RiskLevel) -> PolicyDecision:
-        """Return a deterministic PolicyDecision for the given tool request."""
+    def evaluate(
+        self,
+        request: ToolRequest,
+        risk_level: RiskLevel,
+        *,
+        confirmed: bool = False,
+    ) -> PolicyDecision:
+        """Return a deterministic PolicyDecision for the given tool request.
+
+        Args:
+            request: The tool request.
+            risk_level: The tool's risk classification.
+            confirmed: True only when ToolExecutor has already validated the
+                confirmation token via ConfirmationStore.consume().  Never set
+                this based on the raw presence of confirmation_id.
+        """
 
         # DANGEROUS — always requires explicit confirmation, no exceptions
         if risk_level == RiskLevel.DANGEROUS:
+            if confirmed:
+                return PolicyDecision(
+                    decision=PolicyDecisionType.ALLOW,
+                    risk_level=risk_level,
+                    tool_name=request.tool_name,
+                    policy_rule="DANGEROUS_CONFIRMED",
+                    reason="Dangerous action approved via validated confirmation.",
+                )
             return PolicyDecision(
                 decision=PolicyDecisionType.REQUIRES_CONFIRMATION,
                 risk_level=risk_level,
@@ -41,15 +65,15 @@ class PolicyEngine:
                 ),
             )
 
-        # SENSITIVE — requires confirmation unless a valid confirmation_id is present
+        # SENSITIVE — requires confirmation unless token was validated
         if risk_level == RiskLevel.SENSITIVE:
-            if request.confirmation_id:
+            if confirmed:
                 return PolicyDecision(
                     decision=PolicyDecisionType.ALLOW,
                     risk_level=risk_level,
                     tool_name=request.tool_name,
                     policy_rule="SENSITIVE_CONFIRMED",
-                    reason="Sensitive action approved via confirmation.",
+                    reason="Sensitive action approved via validated confirmation.",
                 )
             return PolicyDecision(
                 decision=PolicyDecisionType.REQUIRES_CONFIRMATION,
@@ -65,13 +89,13 @@ class PolicyEngine:
         # LOW_RISK — allowed by default; require_confirmation setting can tighten this
         if risk_level == RiskLevel.LOW_RISK:
             if self._settings.require_confirmation:
-                if request.confirmation_id:
+                if confirmed:
                     return PolicyDecision(
                         decision=PolicyDecisionType.ALLOW,
                         risk_level=risk_level,
                         tool_name=request.tool_name,
                         policy_rule="LOW_RISK_CONFIRMED",
-                        reason="Low-risk action approved via confirmation.",
+                        reason="Low-risk action approved via validated confirmation.",
                     )
                 return PolicyDecision(
                     decision=PolicyDecisionType.REQUIRES_CONFIRMATION,

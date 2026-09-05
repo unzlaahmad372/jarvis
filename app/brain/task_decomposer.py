@@ -101,13 +101,13 @@ def decompose(message: str) -> list[SubTask]:
 
 
 def _split_fragments(message: str) -> list[str]:
-    """Split message on conjunctions, returning non-empty fragments."""
-    lower = message.lower()
-    for conj in _CONJUNCTIONS:
-        if conj in lower:
-            idx = lower.index(conj)
-            left = message[:idx].strip()
-            right = message[idx + len(conj):].strip()
-            if left and right:
-                return [left, right]
-    return [message]
+    """Split message on conjunctions, returning all non-empty fragments.
+
+    Applies each conjunction pattern recursively so 'A and B and C'
+    produces three fragments rather than stopping at the first split.
+    """
+    import re
+
+    pattern = "|".join(re.escape(c) for c in _CONJUNCTIONS)
+    parts = re.split(pattern, message, flags=re.IGNORECASE)
+    return [p.strip() for p in parts if p.strip()]

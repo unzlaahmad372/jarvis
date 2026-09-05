@@ -211,11 +211,19 @@ def test_policy_sensitive_without_confirmation(settings):
 
 
 def test_policy_sensitive_with_confirmation_id(settings):
+    """PolicyEngine no longer trusts a raw confirmation_id string.
+    confirmed=True must be passed explicitly (set by ToolExecutor after
+    ConfirmationStore.consume() succeeds).
+    """
     engine = PolicyEngine(settings)
     req = ToolRequest(tool_name="fake_sensitive", confirmation_id="abc-123")
+    # Without confirmed=True the policy still requires confirmation
     decision = engine.evaluate(req, RiskLevel.SENSITIVE)
-    assert decision.decision == PolicyDecisionType.ALLOW
-    assert decision.policy_rule == "SENSITIVE_CONFIRMED"
+    assert decision.decision == PolicyDecisionType.REQUIRES_CONFIRMATION
+    # With confirmed=True (set by ToolExecutor after store.consume()) it allows
+    decision_confirmed = engine.evaluate(req, RiskLevel.SENSITIVE, confirmed=True)
+    assert decision_confirmed.decision == PolicyDecisionType.ALLOW
+    assert decision_confirmed.policy_rule == "SENSITIVE_CONFIRMED"
 
 
 def test_policy_dangerous_with_confirmation_id_still_requires_confirmation(settings):
@@ -249,7 +257,14 @@ async def test_executor_sensitive_blocked_without_confirmation(executor, db_sess
 
 @pytest.mark.asyncio
 async def test_executor_sensitive_allowed_with_confirmation(executor, db_session):
-    req = ToolRequest(tool_name="fake_sensitive", confirmation_id="confirmed-123")
+    """ToolExecutor validates confirmation_id via ConfirmationStore.consume().
+    A raw string that is not in the store is rejected.
+    """
+    from app.brain.confirmation import get_confirmation_store
+    store = get_confirmation_store()
+    # Create a real confirmation token for the fake_sensitive tool
+    pending = store.create("fake_sensitive", {}, "SENSITIVE", "SENSITIVE_ACTION_CONFIRMATION")
+    req = ToolRequest(tool_name="fake_sensitive", confirmation_id=pending.confirmation_id)
     result, decision = await executor.execute(req, db_session)
     await db_session.commit()
     assert result.success is True

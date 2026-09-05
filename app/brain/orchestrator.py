@@ -138,17 +138,15 @@ class ChatOrchestrator:
             messages, summaries = await self._load_history(session, conversation)
 
         # ── Remember command detection ─────────────────────────────────────────
-        lower = user_message.lower().strip()
-        if lower.startswith(("remember ", "remember that ", "remember: ")):
-            if lower.startswith("remember that "):
-                content = user_message[len("remember that "):].strip()
-            elif lower.startswith("remember: "):
-                content = user_message[len("remember: "):].strip()
-            else:
-                content = user_message[len("remember "):].strip()
+        import re
+        _remember_re = re.compile(
+            r"^remember(?:\s+that|:)?\s+(.+)$", re.IGNORECASE | re.DOTALL
+        )
+        _m = _remember_re.match(user_message.strip())
+        if _m:
             await remember(
                 session,
-                content=content,
+                content=_m.group(1).strip(),
                 source=f"conversation:{conversation.id}",
             )
             await session.flush()

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import DbSession, SettingsDep
+from app.api.deps import DbSession, SettingsDep, get_orchestrator
 from app.api.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -15,7 +16,7 @@ from app.api.schemas.chat import (
     TokenUsage,
 )
 from app.brain.orchestrator import ChatOrchestrator
-from app.inference.manager import InferenceManager, InferenceQueueFullError
+from app.inference.manager import InferenceQueueFullError
 from app.llm.base import LLMProvider
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
@@ -28,8 +29,10 @@ def set_llm_provider(provider: LLMProvider | None) -> None:
     _llm_provider_override = provider
 
 
-def _get_orchestrator(settings: object) -> ChatOrchestrator:
+def build_orchestrator(settings: object) -> ChatOrchestrator:
+    """Build a ChatOrchestrator.  Called once at startup from lifespan()."""
     from app.core.config import Settings
+    from app.inference.manager import InferenceManager
     from app.knowledge.embeddings import OllamaEmbeddingProvider
     from app.knowledge.vector_store import ChromaVectorStore
     from app.llm.ollama import OllamaProvider
@@ -40,6 +43,7 @@ def _get_orchestrator(settings: object) -> ChatOrchestrator:
     llm: LLMProvider = _llm_provider_override or OllamaProvider(
         base_url=s.ollama_url, model=s.llm_model
     )
+    # Single shared InferenceManager — semaphore is shared across all requests
     inference = InferenceManager(
         max_concurrent=s.max_concurrent_llm_requests,
         timeout_seconds=s.llm_request_timeout,
@@ -64,16 +68,18 @@ def _get_orchestrator(settings: object) -> ChatOrchestrator:
     )
 
 
+OrchestratorDep = Annotated[ChatOrchestrator, Depends(get_orchestrator)]
+
+
 @router.post("/chat", summary="Send a chat message", response_model=None)
 async def chat(
     body: ChatRequest,
     request: Request,
     session: DbSession,
     settings: SettingsDep,
+    orchestrator: OrchestratorDep,
 ) -> StreamingResponse | ChatResponse:
     """Send a message to JARVIS (stream=true for SSE, stream=false for JSON)."""
-    orchestrator = _get_orchestrator(settings)
-
     if body.stream:
         async def _generate() -> AsyncGenerator[str, None]:
             async for chunk in orchestrator.stream_chat(

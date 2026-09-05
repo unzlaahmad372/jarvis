@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,10 +34,11 @@ class RetentionResult(BaseModel):
     tool_executions_deleted: int = 0
     automation_executions_deleted: int = 0
     errors: list[str] = Field(default_factory=list)
-    total_deleted: int = 0
 
-    def _recompute_total(self) -> None:
-        self.total_deleted = (
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def total_deleted(self) -> int:
+        return (
             self.conversations_deleted
             + self.tool_executions_deleted
             + self.automation_executions_deleted
@@ -121,7 +122,6 @@ class RetentionEnforcer:
             logger.error("retention_automation_executions_error", error=str(exc))
 
         await session.commit()
-        result._recompute_total()
         logger.info(
             "retention_run_complete",
             total_deleted=result.total_deleted,

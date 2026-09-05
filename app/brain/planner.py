@@ -168,7 +168,20 @@ class AgentPlanner:
         return result
 
     def _build_params(self, tool_name: str, message: str) -> dict[str, object]:
-        """Build tool parameters from the user message."""
-        if tool_name == "disk_usage":
+        """Build tool parameters from the user message.
+
+        For tools that require a path, default to '.' (current data dir).
+        system_info takes no parameters.
+        """
+        _path_tools = {
+            "list_directory",
+            "search_files",
+            "file_metadata",
+            "disk_usage",
+        }
+        if tool_name in _path_tools:
             return {"path": "."}
+        if tool_name == "read_file":
+            return {"path": "."}
+        # system_info and others take no parameters
         return {}

@@ -45,14 +45,19 @@ async def execute_tool(
     session: DbSession,
     settings: SettingsDep,
 ) -> ToolExecuteResponse:
-    """Execute a tool. Goes through PolicyEngine — may require confirmation."""
+    """Execute a tool directly (READ_ONLY / LOW_RISK without confirmation).
+
+    SENSITIVE and DANGEROUS tools must go through POST /tools/confirm instead.
+    confirmation_id is ignored on this path — all token validation happens
+    in /confirm which calls ConfirmationStore.consume() via ToolExecutor.
+    """
     registry = get_registry()
     executor = ToolExecutor(registry=registry, settings=settings)
 
     request = ToolRequest(
         tool_name=tool_name,
         parameters=dict(body.parameters),
-        confirmation_id=body.confirmation_id,
+        confirmation_id=None,  # never trust a client-supplied id on this path
     )
     result, decision = await executor.execute(request, session)
     await session.commit()
@@ -70,12 +75,13 @@ async def execute_tool(
     )
 
 
-@router.get("/audit", response_model=list[ToolExecutionOut])
+# Deprecated: superseded by GET /api/v1/audit/tool-executions (Phase 12)
+@router.get("/audit", response_model=list[ToolExecutionOut], deprecated=True)
 async def get_audit_log(
     session: DbSession,
     limit: int = Query(default=50, ge=1, le=200),
 ) -> list[ToolExecutionOut]:
-    """Return recent tool execution audit log entries."""
+    """Deprecated: use GET /api/v1/audit/tool-executions instead."""
     result = await session.execute(
         select(ToolExecution).order_by(ToolExecution.created_at.desc()).limit(limit)
     )
@@ -90,18 +96,27 @@ async def confirm_and_execute(
 ) -> ToolExecuteResponse:
     """Consume a pending confirmation and execute the approved tool.
 
-    Spec §71: verifies digest match, expiry, and single-use before execution.
+    Spec §71: the backend retrieves the stored parameters from ConfirmationStore
+    so the client never needs to re-supply them (prevents parameter tampering).
+    ToolExecutor validates digest, expiry, and single-use via consume().
     """
     store = get_confirmation_store()
-    ok, reason = store.consume(body.confirmation_id, body.tool_name, body.parameters)
-    if not ok:
-        raise HTTPException(status_code=409, detail=reason)
+
+    # Look up stored parameters BEFORE consuming — client supplies only the id
+    entry = store.get(body.confirmation_id)
+    if entry is None:
+        raise HTTPException(status_code=409, detail="Confirmation token not found.")
+    if entry.consumed:
+        raise HTTPException(status_code=409, detail="Confirmation token has already been used.")
 
     registry = get_registry()
     executor = ToolExecutor(registry=registry, settings=settings)
+
+    # Pass the server-stored parameters and the confirmation_id.
+    # ToolExecutor will call store.consume() which validates digest/expiry/single-use.
     request = ToolRequest(
-        tool_name=body.tool_name,
-        parameters=body.parameters,
+        tool_name=entry.tool_name,
+        parameters=entry.parameters,
         confirmation_id=body.confirmation_id,
     )
     result, decision = await executor.execute(request, session)

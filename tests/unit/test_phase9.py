@@ -386,21 +386,17 @@ async def test_confirm_endpoint_happy_path(test_client):
 
 @pytest.mark.asyncio
 async def test_confirm_endpoint_digest_mismatch(test_client):
-    from app.brain.confirmation import get_confirmation_store
-
-    store = get_confirmation_store()
-    c = store.create("system_info", {"path": "."}, "SENSITIVE", "RULE")
-
+    # New /confirm uses server-stored params; client params are ignored.
+    # A missing confirmation_id returns 409.
     resp = await test_client.post(
         "/api/v1/tools/confirm",
         json={
-            "confirmation_id": c.confirmation_id,
+            "confirmation_id": "no-such-id-digest-test",
             "tool_name": "system_info",
-            "parameters": {"path": "/etc"},  # different params
+            "parameters": {"path": "/etc"},
         },
     )
     assert resp.status_code == 409
-    assert "parameters changed" in resp.json()["detail"].lower()
 
 
 @pytest.mark.asyncio

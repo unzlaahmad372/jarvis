@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.brain.confirmation import get_confirmation_store
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.db.models import ToolExecution
@@ -52,7 +53,34 @@ class ToolExecutor:
             await self._write_audit(session, request, result, decision, duration_ms=0)
             return result, decision
 
-        decision = self._policy.evaluate(request, tool.risk_level)
+        # Validate confirmation token BEFORE calling PolicyEngine.
+        # confirmed=True is only set when ConfirmationStore.consume() succeeds,
+        # preventing any raw string from bypassing SENSITIVE/DANGEROUS checks.
+        confirmed = False
+        if request.confirmation_id:
+            store = get_confirmation_store()
+            ok, reason = store.consume(
+                request.confirmation_id, request.tool_name, request.parameters
+            )
+            if not ok:
+                decision = PolicyDecision(
+                    decision=PolicyDecisionType.DENY,
+                    risk_level=tool.risk_level,
+                    tool_name=request.tool_name,
+                    policy_rule="INVALID_CONFIRMATION",
+                    reason=reason,
+                )
+                result = ToolResult(
+                    tool_name=request.tool_name,
+                    success=False,
+                    output="",
+                    error=reason,
+                )
+                await self._write_audit(session, request, result, decision, duration_ms=0)
+                return result, decision
+            confirmed = True
+
+        decision = self._policy.evaluate(request, tool.risk_level, confirmed=confirmed)
 
         if not decision.allowed:
             result = ToolResult(

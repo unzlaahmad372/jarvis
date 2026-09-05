@@ -82,28 +82,25 @@ class InferenceManager:
 
         self._queued += 1
         logger.debug("inference_queued", queued=self._queued, request_id=request_id)
+        acquired = False
 
         try:
             async with self._semaphore:
+                acquired = True
                 self._queued -= 1
                 logger.debug("inference_started", request_id=request_id)
-                try:
-                    result: T = await asyncio.wait_for(
-                        coro_fn(), timeout=self._timeout
-                    )
-                    logger.debug("inference_completed", request_id=request_id)
-                    return result
-                except TimeoutError:
-                    logger.warning(
-                        "inference_timeout",
-                        timeout=self._timeout,
-                        request_id=request_id,
-                    )
-                    raise
+                result: T = await asyncio.wait_for(coro_fn(), timeout=self._timeout)
+                logger.debug("inference_completed", request_id=request_id)
+                return result
+        except TimeoutError:
+            logger.warning(
+                "inference_timeout",
+                timeout=self._timeout,
+                request_id=request_id,
+            )
+            raise
         except Exception:
-            # Ensure queued counter stays consistent on unexpected errors
-            if self._queued > 0:
+            # Only decrement if we never acquired the semaphore (still queued)
+            if not acquired and self._queued > 0:
                 self._queued -= 1
             raise
-        finally:
-            pass  # semaphore context manager handles release
