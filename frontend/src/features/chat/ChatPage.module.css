@@ -268,3 +268,145 @@
 .convId {
   color: var(--hud-text-dim);
 }
+
+/* ── Tool approval panel ───────────────────────────────────────────────────── */
+
+.approvalPanel {
+  align-self: stretch;
+  background: rgba(255, 170, 0, 0.06);
+  border: 1px solid var(--hud-warning);
+  border-radius: var(--hud-radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.approvalHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.approvalIcon {
+  font-size: 1.1rem;
+  color: var(--hud-warning);
+}
+
+.approvalTitle {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--hud-warning);
+}
+
+.approvalDetails {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0;
+  font-size: var(--hud-font-size-sm);
+}
+
+.approvalDetails dt {
+  color: var(--hud-text-dim);
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  letter-spacing: 0.06em;
+  align-self: center;
+}
+
+.approvalDetails dd {
+  margin: 0;
+  color: var(--hud-text-primary);
+}
+
+.digest {
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+}
+
+.approvalActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.denyBtn {
+  background: rgba(255, 61, 61, 0.1);
+  border: 1px solid var(--hud-danger);
+  color: var(--hud-danger);
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-sm);
+  padding: 8px 16px;
+  border-radius: var(--hud-radius);
+  cursor: pointer;
+  transition: background var(--hud-motion-fast);
+}
+
+.denyBtn:hover {
+  background: rgba(255, 61, 61, 0.2);
+}
+
+.approveBtn {
+  background: rgba(0, 255, 170, 0.1);
+  border: 1px solid var(--hud-success);
+  color: var(--hud-success);
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-sm);
+  padding: 8px 16px;
+  border-radius: var(--hud-radius);
+  cursor: pointer;
+  transition: background var(--hud-motion-fast), box-shadow var(--hud-motion-fast);
+}
+
+.approveBtn:hover {
+  background: rgba(0, 255, 170, 0.2);
+  box-shadow: var(--hud-glow-soft);
+}
+
+/* ── Plan steps bar ────────────────────────────────────────────────────────── */
+
+.planSteps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-top: 1px solid var(--hud-line);
+  background: var(--hud-surface);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.intentBadge {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-accent-muted);
+  letter-spacing: 0.08em;
+  margin-right: 4px;
+}
+
+.planStep {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  padding: 2px 8px;
+  border-radius: var(--hud-radius);
+  border: 1px solid transparent;
+}
+
+.planStepOk {
+  color: var(--hud-success);
+  border-color: rgba(0, 255, 170, 0.2);
+  background: rgba(0, 255, 170, 0.05);
+}
+
+.planStepFail {
+  color: var(--hud-warning);
+  border-color: rgba(255, 170, 0, 0.2);
+  background: rgba(255, 170, 0, 0.05);
+}
+
+.mono {
+  font-family: var(--hud-font-mono);
+}

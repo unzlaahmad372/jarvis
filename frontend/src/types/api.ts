@@ -66,6 +66,15 @@ export type SSEEventType =
   | 'WAITING_FOR_APPROVAL'
   | 'ERROR'
 
+export interface PlanStep {
+  tool_name: string
+  success: boolean
+  policy_decision: string
+  requires_confirmation: boolean
+  confirmation_id: string | null
+  error: string | null
+}
+
 export interface ResponseCompletePayload {
   conversation_id: number
   message_id: number
@@ -77,6 +86,23 @@ export interface ResponseCompletePayload {
   output_tokens: number | null
   context_tokens: number | null
   compacted: boolean
+  intent: string
+  plan_steps: PlanStep[]
+}
+
+export interface ConfirmationOut {
+  confirmation_id: string
+  tool_name: string
+  risk_level: string
+  policy_rule: string
+  action_digest: string
+  expires_at: string
+}
+
+export interface ConfirmRequest {
+  confirmation_id: string
+  tool_name: string
+  parameters: Record<string, unknown>
 }
 
 export interface ErrorPayload {

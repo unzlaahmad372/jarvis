@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toolsApi } from '@/services/api/client'
-import type { ToolExecuteResponse, ToolExecutionOut, ToolOut } from '@/types/api'
+import type { ConfirmationOut, ToolExecuteResponse, ToolExecutionOut, ToolOut } from '@/types/api'
 import styles from './ToolsPage.module.css'
 
 const RISK_COLORS: Record<string, string> = {
@@ -18,6 +18,7 @@ export function ToolsPage() {
   const [result, setResult] = useState<ToolExecuteResponse | null>(null)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<ConfirmationOut | null>(null)
 
   useEffect(() => {
     toolsApi.list().then(setTools).catch(() => setError('Failed to load tools'))
@@ -34,6 +35,11 @@ export function ToolsPage() {
       try { parsed = JSON.parse(params) } catch { setError('Invalid JSON parameters'); setRunning(false); return }
       const res = await toolsApi.execute(selected.name, { parameters: parsed })
       setResult(res)
+      if (res.requires_confirmation && res.policy_decision === 'REQUIRES_CONFIRMATION') {
+        // Fetch the pending confirmation so we can show the approval panel
+        // The planner creates it; for direct tool execution we show the inline note
+        setPendingConfirm(null)
+      }
       const fresh = await toolsApi.audit()
       setAudit(fresh)
     } catch (e) {
@@ -106,9 +112,13 @@ export function ToolsPage() {
                     <span className={styles.policyBadge}>{result.policy_decision}</span>
                   </div>
                   {result.requires_confirmation && (
-                    <p className={styles.confirmNote}>
-                      ⚠ This action requires confirmation. Pass a <code>confirmation_id</code> to proceed.
-                    </p>
+                    <div className={styles.confirmNote}>
+                      <p>⚠ This action requires confirmation before it can execute.</p>
+                      <p className={styles.confirmHint}>
+                        Use the chat interface to trigger this tool — JARVIS will present
+                        an approval panel with the exact action digest.
+                      </p>
+                    </div>
                   )}
                   {result.error && <p className={styles.error}>{result.error}</p>}
                   {result.output && (

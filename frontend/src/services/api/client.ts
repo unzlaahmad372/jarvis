@@ -10,6 +10,8 @@ import type {
   AutomationJobsOut,
   ChatRequest,
   ChatResponse,
+  ConfirmationOut,
+  ConfirmRequest,
   ConversationDetail,
   ConversationOut,
   DependenciesResponse,
@@ -90,6 +92,13 @@ export const toolsApi = {
     }),
   audit: (limit = 50) =>
     request<ToolExecutionOut[]>(`/api/v1/tools/audit?limit=${limit}`),
+  confirm: (body: ConfirmRequest) =>
+    request<ToolExecuteResponse>('/api/v1/tools/confirm', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getConfirmation: (id: string) =>
+    request<ConfirmationOut>(`/api/v1/tools/confirmations/${encodeURIComponent(id)}`),
 }
 
 // ── Memory ────────────────────────────────────────────────────────────────────

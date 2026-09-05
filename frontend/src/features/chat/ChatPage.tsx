@@ -1,11 +1,98 @@
 import { useRef, useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { chatApi, conversationsApi, voiceApi } from '@/services/api/client'
+import { chatApi, conversationsApi, toolsApi, voiceApi } from '@/services/api/client'
 import { useChatStore } from '@/app/stores/chatStore'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
-import type { MessageOut, ResponseCompletePayload, SSEEvent } from '@/types/api'
+import type {
+  ConfirmationOut,
+  MessageOut,
+  PlanStep,
+  ResponseCompletePayload,
+  SSEEvent,
+} from '@/types/api'
 import styles from './ChatPage.module.css'
+
+// ── Risk colour map ───────────────────────────────────────────────────────────
+
+const RISK_COLORS: Record<string, string> = {
+  READ_ONLY: 'var(--hud-success)',
+  LOW_RISK: 'var(--hud-info)',
+  SENSITIVE: 'var(--hud-warning)',
+  DANGEROUS: 'var(--hud-danger)',
+}
+
+// ── Tool approval panel (spec §71) ────────────────────────────────────────────
+
+function ToolApprovalPanel({
+  confirmation,
+  onApprove,
+  onDeny,
+}: {
+  confirmation: ConfirmationOut
+  onApprove: () => void
+  onDeny: () => void
+}) {
+  const expiresAt = new Date(confirmation.expires_at)
+  const riskColor = RISK_COLORS[confirmation.risk_level] ?? 'var(--hud-text-secondary)'
+
+  return (
+    <div className={styles.approvalPanel} role="dialog" aria-modal="true" aria-label="Tool approval required">
+      <div className={styles.approvalHeader}>
+        <span className={styles.approvalIcon} aria-hidden="true">⚠</span>
+        <span className={styles.approvalTitle}>ACTION REQUIRES APPROVAL</span>
+      </div>
+      <dl className={styles.approvalDetails}>
+        <dt>Tool</dt>
+        <dd className={styles.mono}>{confirmation.tool_name}</dd>
+        <dt>Risk</dt>
+        <dd style={{ color: riskColor }}>{confirmation.risk_level}</dd>
+        <dt>Policy rule</dt>
+        <dd className={styles.mono}>{confirmation.policy_rule}</dd>
+        <dt>Action digest</dt>
+        <dd className={`${styles.mono} ${styles.digest}`}>{confirmation.action_digest.slice(0, 16)}…</dd>
+        <dt>Expires</dt>
+        <dd className={styles.mono}>{expiresAt.toLocaleTimeString()}</dd>
+      </dl>
+      <div className={styles.approvalActions}>
+        <button
+          className={styles.denyBtn}
+          onClick={onDeny}
+          aria-label="Deny this action"
+        >
+          ✕ Deny
+        </button>
+        <button
+          className={styles.approveBtn}
+          onClick={onApprove}
+          aria-label="Approve this action"
+        >
+          ✓ Approve
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Plan steps display ────────────────────────────────────────────────────────
+
+function PlanStepsBar({ steps, intent }: { steps: PlanStep[]; intent: string | null }) {
+  if (steps.length === 0) return null
+  return (
+    <div className={styles.planSteps} aria-label="Tool activity">
+      {intent && <span className={styles.intentBadge}>{intent}</span>}
+      {steps.map((s, i) => (
+        <span
+          key={i}
+          className={`${styles.planStep} ${s.success ? styles.planStepOk : styles.planStepFail}`}
+          title={s.error ?? s.policy_decision}
+        >
+          {s.success ? '✓' : s.requires_confirmation ? '⏳' : '✗'} {s.tool_name}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 
@@ -54,6 +141,9 @@ export function ChatPage() {
     streamingContent,
     jarvisState,
     lastError,
+    pendingConfirmation,
+    lastPlanSteps,
+    lastIntent,
     startStreaming,
     appendStreamChunk,
     finishStreaming,
@@ -61,6 +151,8 @@ export function ChatPage() {
     clearError,
     setActiveConversation,
     setJarvisState,
+    setPendingConfirmation,
+    setLastPlanSteps,
   } = useChatStore()
 
   const [input, setInput] = useState('')
@@ -99,7 +191,7 @@ export function ChatPage() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [conversation?.messages, streamingContent])
+  }, [conversation?.messages, streamingContent, pendingConfirmation])
 
   const handleSend = async () => {
     const message = input.trim()
@@ -122,7 +214,6 @@ export function ChatPage() {
 
       if (finalConversationId != null) {
         finishStreaming(finalConversationId)
-        // Invalidate queries to reload conversation
         await queryClient.invalidateQueries({ queryKey: ['conversation', finalConversationId] })
         await queryClient.invalidateQueries({ queryKey: ['conversations'] })
       }
@@ -151,6 +242,9 @@ export function ChatPage() {
       case 'RESPONSE_COMPLETE': {
         const p = event.payload as ResponseCompletePayload
         onComplete(p.conversation_id)
+        if (p.plan_steps?.length) {
+          setLastPlanSteps(p.plan_steps, p.intent ?? 'GENERAL_CHAT')
+        }
         if (autoSpeak && tts.supported) {
           tts.speak(p.content)
         }
@@ -162,6 +256,27 @@ export function ChatPage() {
         break
       }
     }
+  }
+
+  // ── Confirmation handlers ─────────────────────────────────────────────────
+
+  const handleApprove = async () => {
+    if (!pendingConfirmation) return
+    try {
+      await toolsApi.confirm({
+        confirmation_id: pendingConfirmation.confirmation_id,
+        tool_name: pendingConfirmation.tool_name,
+        parameters: {},
+      })
+      setPendingConfirmation(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Confirmation failed')
+    }
+  }
+
+  const handleDeny = () => {
+    setPendingConfirmation(null)
+    setJarvisState('IDLE')
   }
 
   const handleCancel = () => {
@@ -195,6 +310,15 @@ export function ChatPage() {
 
         {isStreaming && <StreamingBubble content={streamingContent} />}
 
+        {/* Tool approval panel */}
+        {pendingConfirmation && (
+          <ToolApprovalPanel
+            confirmation={pendingConfirmation}
+            onApprove={() => void handleApprove()}
+            onDeny={handleDeny}
+          />
+        )}
+
         {lastError && (
           <div className={styles.error} role="alert">
             <span>⚠ {lastError}</span>
@@ -204,6 +328,9 @@ export function ChatPage() {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Plan steps bar */}
+      <PlanStepsBar steps={lastPlanSteps} intent={lastIntent} />
 
       {/* Input area */}
       <div className={styles.inputArea}>
