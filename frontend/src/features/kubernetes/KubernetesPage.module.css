@@ -1,0 +1,200 @@
+.page {
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.title {
+  font-family: var(--hud-font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--hud-accent);
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+  font-family: var(--hud-font-mono);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  flex: 1;
+}
+
+.sectionTitle {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.contextList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contextItem {
+  background: var(--hud-surface-elevated);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color var(--hud-motion-fast);
+}
+
+.contextItem:hover {
+  border-color: var(--hud-accent-muted);
+}
+
+.contextItem.active {
+  border-color: var(--hud-accent);
+  background: var(--hud-accent-dim);
+}
+
+.ctxName {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-sm);
+  color: var(--hud-text-primary);
+}
+
+.ctxMeta {
+  display: flex;
+  gap: 6px;
+}
+
+.ctxCluster {
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+}
+
+.currentBadge {
+  font-family: var(--hud-font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--hud-accent-dim);
+  color: var(--hud-accent);
+  border: 1px solid var(--hud-accent-muted);
+}
+
+.protectedBadge {
+  font-family: var(--hud-font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 165, 0, 0.1);
+  color: var(--hud-warning);
+  border: 1px solid var(--hud-warning);
+}
+
+.healthPanel {
+  display: flex;
+  flex-direction: column;
+}
+
+.healthCard {
+  background: var(--hud-surface-elevated);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.healthHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contextName {
+  font-family: var(--hud-font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--hud-text-primary);
+}
+
+.statusBadge {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-left: auto;
+}
+
+.healthMetrics {
+  display: flex;
+  gap: 24px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metricLabel {
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+  font-family: var(--hud-font-mono);
+  letter-spacing: 0.06em;
+}
+
+.metricValue {
+  font-family: var(--hud-font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--hud-text-primary);
+}
+
+.errorMsg {
+  font-size: var(--hud-font-size-sm);
+  color: var(--hud-danger);
+  font-family: var(--hud-font-mono);
+}
+
+.empty {
+  color: var(--hud-text-dim);
+  font-size: var(--hud-font-size-sm);
+  font-family: var(--hud-font-mono);
+  padding: 24px;
+  text-align: center;
+}
+
+.loading {
+  color: var(--hud-accent-muted);
+  font-size: var(--hud-font-size-sm);
+  font-family: var(--hud-font-mono);
+  padding: 12px 0;
+}
+
+.error {
+  padding: 12px;
+  background: rgba(255, 61, 61, 0.08);
+  border: 1px solid var(--hud-danger);
+  border-radius: var(--hud-radius);
+  color: var(--hud-danger);
+  font-size: var(--hud-font-size-sm);
+  font-family: var(--hud-font-mono);
+}

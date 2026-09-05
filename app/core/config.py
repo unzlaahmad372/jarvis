@@ -73,6 +73,12 @@ class Settings(BaseSettings):
     tool_log_retention_days: int = 90
     temp_retention_hours: int = 24
 
+    # ── Kubernetes ─────────────────────────────────────────────────────────────────
+    enable_kubernetes: bool = True
+    k8s_protected_contexts: str = ""  # comma-separated context names treated as protected
+    k8s_max_log_lines: int = 100
+    k8s_fan_out_limit: int = 5  # max parallel cluster queries
+
     # ── Voice ─────────────────────────────────────────────────────────────────
     enable_voice: bool = True
     voice_auto_speak: bool = True
@@ -106,6 +112,10 @@ class Settings(BaseSettings):
                 "Cloud processing requires explicit opt-in."
             )
         return self
+
+    @property
+    def k8s_protected_contexts_list(self) -> list[str]:
+        return [c.strip() for c in self.k8s_protected_contexts.split(",") if c.strip()]
 
     @property
     def allowed_origins_list(self) -> list[str]:

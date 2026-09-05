@@ -24,6 +24,7 @@ from app.api.routes import chat as chat_router
 from app.api.routes import conversations as conversations_router
 from app.api.routes import documents as documents_router
 from app.api.routes import health as health_router
+from app.api.routes import kubernetes as kubernetes_router
 from app.api.routes import memory as memory_router
 from app.api.routes import tools as tools_router
 from app.api.routes import voice as voice_router
@@ -60,6 +61,26 @@ def _register_tools(settings: Settings) -> None:
     registry.register(FileMetadataTool(far))
     registry.register(SystemInfoTool())
     registry.register(DiskUsageTool())
+
+    # Kubernetes tools — registered only when enabled
+    if settings.enable_kubernetes:
+        from app.tools.kubernetes.client import RealKubernetesClient
+        from app.tools.kubernetes.tools import (
+            ClusterHealthTool,
+            GetPodLogsTool,
+            ListContextsTool,
+            ListDeploymentsTool,
+            ListNamespacesTool,
+            ListPodsTool,
+        )
+
+        k8s_client = RealKubernetesClient()
+        registry.register(ListContextsTool(k8s_client, settings))
+        registry.register(ListNamespacesTool(k8s_client, settings))
+        registry.register(ListPodsTool(k8s_client, settings))
+        registry.register(GetPodLogsTool(k8s_client, settings))
+        registry.register(ListDeploymentsTool(k8s_client, settings))
+        registry.register(ClusterHealthTool(k8s_client, settings))
 
 
 async def _seed_default_workspace() -> None:
@@ -171,6 +192,7 @@ def create_app() -> FastAPI:
     app.include_router(memory_router.router)
     app.include_router(tools_router.router)
     app.include_router(voice_router.router)
+    app.include_router(kubernetes_router.router)
 
     return app
 

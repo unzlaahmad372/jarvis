@@ -166,6 +166,35 @@ class ToolExecutionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Kubernetes ────────────────────────────────────────────────────────────────────
+
+
+class K8sContextOut(BaseModel):
+    name: str
+    cluster: str
+    namespace: str
+    current: bool
+    protected: bool
+
+
+class K8sContextsOut(BaseModel):
+    current_context: str | None
+    contexts: list[K8sContextOut]
+
+
+class K8sClusterHealthOut(BaseModel):
+    context: str
+    protected: bool
+    status: str
+    reachable: bool
+    node_total: int
+    node_ready: int
+    pod_total: int
+    pod_running: int
+    pod_failed: int
+    error: str | None = None
+
+
 # ── Voice ────────────────────────────────────────────────────────────────────
 
 

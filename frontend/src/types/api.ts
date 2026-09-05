@@ -156,6 +156,32 @@ export interface ToolExecutionOut {
   created_at: string
 }
 
+export interface K8sContextOut {
+  name: string
+  cluster: string
+  namespace: string
+  current: boolean
+  protected: boolean
+}
+
+export interface K8sContextsOut {
+  current_context: string | null
+  contexts: K8sContextOut[]
+}
+
+export interface K8sClusterHealthOut {
+  context: string
+  protected: boolean
+  status: 'HEALTHY' | 'DEGRADED' | 'UNREACHABLE'
+  reachable: boolean
+  node_total: number
+  node_ready: number
+  pod_total: number
+  pod_running: number
+  pod_failed: number
+  error: string | null
+}
+
 export interface VoiceSettingsOut {
   enabled: boolean
   auto_speak: boolean

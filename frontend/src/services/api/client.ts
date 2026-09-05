@@ -10,6 +10,8 @@ import type {
   ConversationOut,
   DependenciesResponse,
   DocumentOut,
+  K8sClusterHealthOut,
+  K8sContextsOut,
   MemoryCreate,
   MemoryOut,
   SSEEvent,
@@ -94,6 +96,14 @@ export const memoryApi = {
     request<{ deleted: boolean; memory_id: number }>(`/api/v1/memory/${id}`, { method: 'DELETE' }),
   purge: () =>
     request<{ purged: number }>('/api/v1/memory', { method: 'DELETE' }),
+}
+
+// ── Kubernetes ────────────────────────────────────────────────────────────────────
+
+export const kubernetesApi = {
+  contexts: () => request<K8sContextsOut>('/api/v1/kubernetes/contexts'),
+  health: (context: string) =>
+    request<K8sClusterHealthOut>(`/api/v1/kubernetes/health/${encodeURIComponent(context)}`),
 }
 
 // ── Voice ────────────────────────────────────────────────────────────────────

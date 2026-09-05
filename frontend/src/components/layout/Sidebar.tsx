@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/documents', label: 'Documents', icon: '📄' },
   { to: '/memory', label: 'Memory', icon: '🧠' },
   { to: '/tools', label: 'Tools', icon: '🔧' },
+  { to: '/kubernetes', label: 'Kubernetes', icon: '☸' },
   { to: '/system', label: 'System', icon: '⚡' },
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ] as const
