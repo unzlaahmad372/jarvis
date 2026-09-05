@@ -25,12 +25,40 @@ from app.api.routes import conversations as conversations_router
 from app.api.routes import documents as documents_router
 from app.api.routes import health as health_router
 from app.api.routes import memory as memory_router
-from app.core.config import get_settings
+from app.api.routes import tools as tools_router
+from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import close_db, init_db
 from app.db.models import Base, Workspace
 
 logger = get_logger(__name__)
+
+
+def _register_tools(settings: Settings) -> None:
+    """Register all built-in tools at startup."""
+    from app.tools.filesystem.access import FileAccessRegistry
+    from app.tools.filesystem.tools import (
+        FileMetadataTool,
+        ListDirectoryTool,
+        ReadFileTool,
+        SearchFilesTool,
+    )
+    from app.tools.registry import get_registry, reset_registry
+    from app.tools.system.tools import DiskUsageTool, SystemInfoTool
+
+    reset_registry()
+    registry = get_registry()
+
+    # File access registry — allow the data directory by default
+    far = FileAccessRegistry()
+    far.add_root("data", settings.data_dir.resolve())
+
+    registry.register(ListDirectoryTool(far))
+    registry.register(ReadFileTool(far))
+    registry.register(SearchFilesTool(far))
+    registry.register(FileMetadataTool(far))
+    registry.register(SystemInfoTool())
+    registry.register(DiskUsageTool())
 
 
 async def _seed_default_workspace() -> None:
@@ -85,6 +113,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await _seed_default_workspace()
 
+    # ── Register tools ────────────────────────────────────────────────────────
+    _register_tools(settings)
+
     # Store shared state on app
     app.state.db_engine = engine
     app.state.settings = settings
@@ -137,6 +168,7 @@ def create_app() -> FastAPI:
     app.include_router(conversations_router.router)
     app.include_router(documents_router.router)
     app.include_router(memory_router.router)
+    app.include_router(tools_router.router)
 
     return app
 

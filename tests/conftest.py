@@ -58,6 +58,10 @@ async def test_client(db_engine: AsyncEngine):  # type: ignore[return]
     # Override LLM provider with fake — no Ollama required
     chat_module.set_llm_provider(FakeLLMProvider())
 
+    # Register tools (lifespan doesn't run in test client)
+    from app.main import _register_tools
+    _register_tools(get_settings())
+
     application = create_app()
     application.state.db_engine = db_engine
     application.state.settings = get_settings()

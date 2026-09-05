@@ -1,0 +1,79 @@
+"""Tools endpoints — GET/POST /api/v1/tools."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Query
+from sqlalchemy import select
+
+from app.api.deps import DbSession, SettingsDep
+from app.api.schemas.chat import (
+    ToolExecuteRequest,
+    ToolExecuteResponse,
+    ToolExecutionOut,
+    ToolOut,
+)
+from app.db.models import ToolExecution
+from app.tools.base import ToolRequest
+from app.tools.executor import ToolExecutor
+from app.tools.registry import get_registry
+
+router = APIRouter(prefix="/api/v1/tools", tags=["tools"])
+
+
+@router.get("", response_model=list[ToolOut])
+async def list_tools() -> list[ToolOut]:
+    """List all registered tools with their metadata."""
+    registry = get_registry()
+    return [
+        ToolOut(
+            name=t.name,
+            description=t.description,
+            risk_level=t.risk_level.value,
+            parameters_schema=t.parameters_schema,
+        )
+        for t in registry.list_tools()
+    ]
+
+
+@router.post("/{tool_name}/execute", response_model=ToolExecuteResponse)
+async def execute_tool(
+    tool_name: str,
+    body: ToolExecuteRequest,
+    session: DbSession,
+    settings: SettingsDep,
+) -> ToolExecuteResponse:
+    """Execute a tool. Goes through PolicyEngine — may require confirmation."""
+    registry = get_registry()
+    executor = ToolExecutor(registry=registry, settings=settings)
+
+    request = ToolRequest(
+        tool_name=tool_name,
+        parameters=dict(body.parameters),
+        confirmation_id=body.confirmation_id,
+    )
+    result, decision = await executor.execute(request, session)
+    await session.commit()
+
+    return ToolExecuteResponse(
+        tool_name=result.tool_name,
+        success=result.success,
+        output=result.output,
+        error=result.error,
+        truncated=result.truncated,
+        policy_decision=decision.decision.value,
+        policy_rule=decision.policy_rule,
+        reason=decision.reason,
+        requires_confirmation=decision.requires_confirmation,
+    )
+
+
+@router.get("/audit", response_model=list[ToolExecutionOut])
+async def get_audit_log(
+    session: DbSession,
+    limit: int = Query(default=50, ge=1, le=200),
+) -> list[ToolExecutionOut]:
+    """Return recent tool execution audit log entries."""
+    result = await session.execute(
+        select(ToolExecution).order_by(ToolExecution.created_at.desc()).limit(limit)
+    )
+    return [ToolExecutionOut.model_validate(row) for row in result.scalars().all()]

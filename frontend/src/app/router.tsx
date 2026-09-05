@@ -4,6 +4,7 @@ import { ChatPage } from '@/features/chat/ChatPage'
 import { DocumentsPage } from '@/features/documents/DocumentsPage'
 import { MemoryPage } from '@/features/memory/MemoryPage'
 import { SystemPage } from '@/features/system/SystemPage'
+import { ToolsPage } from '@/features/tools/ToolsPage'
 
 export const router = createBrowserRouter([
   {
@@ -14,6 +15,7 @@ export const router = createBrowserRouter([
       { path: 'chat', element: <ChatPage /> },
       { path: 'documents', element: <DocumentsPage /> },
       { path: 'memory', element: <MemoryPage /> },
+      { path: 'tools', element: <ToolsPage /> },
       { path: 'system', element: <SystemPage /> },
       {
         path: 'settings',

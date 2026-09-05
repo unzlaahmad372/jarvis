@@ -4,6 +4,7 @@ Phase 0: Setting, Workspace
 Phase 1: Conversation, Message, ConversationSummary
 Phase 2: Document, DocumentChunk
 Phase 3: Memory
+Phase 4: ToolExecution
 """
 
 from __future__ import annotations
@@ -282,3 +283,34 @@ class Memory(Base):
 
     def __repr__(self) -> str:
         return f"<Memory id={self.id} category={self.category!r} importance={self.importance}>"
+
+
+class ToolExecution(Base):
+    """Audit log entry for every tool execution attempt.
+
+    Written by ToolExecutor for every call — allowed, denied, or errored.
+    Parameters are sanitised before storage (no secrets, no file contents).
+    """
+
+    __tablename__ = "tool_executions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tool_name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    risk_level: Mapped[str] = mapped_column(String(32), nullable=False)
+    policy_rule: Mapped[str] = mapped_column(String(128), nullable=False)
+    policy_decision: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )  # ALLOW | REQUIRES_CONFIRMATION | DENY
+    parameters_sanitized: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    success: Mapped[bool] = mapped_column(default=False, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ToolExecution id={self.id} tool={self.tool_name!r}"
+            f" decision={self.policy_decision!r}>"
+        )

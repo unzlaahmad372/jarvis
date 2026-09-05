@@ -98,7 +98,7 @@ class DocumentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── SSE event payloads ────────────────────────────────────────────────────────
+# ── Memory ────────────────────────────────────────────────────────────────────
 
 
 class MemoryOut(BaseModel):
@@ -123,6 +123,47 @@ class MemoryCreate(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     source: str | None = None
     data_classification: str = Field(default="PERSONAL")
+
+
+# ── Tools ─────────────────────────────────────────────────────────────────────
+
+
+class ToolOut(BaseModel):
+    name: str
+    description: str
+    risk_level: str
+    parameters_schema: dict[str, object]
+
+
+class ToolExecuteRequest(BaseModel):
+    parameters: dict[str, object] = {}
+    confirmation_id: str | None = None
+
+
+class ToolExecuteResponse(BaseModel):
+    tool_name: str
+    success: bool
+    output: str
+    error: str | None = None
+    truncated: bool = False
+    policy_decision: str
+    policy_rule: str
+    reason: str
+    requires_confirmation: bool = False
+
+
+class ToolExecutionOut(BaseModel):
+    id: int
+    tool_name: str
+    risk_level: str
+    policy_rule: str
+    policy_decision: str
+    success: bool
+    error: str | None = None
+    duration_ms: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 # ── SSE event payloads ────────────────────────────────────────────────────────

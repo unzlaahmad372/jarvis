@@ -13,6 +13,10 @@ import type {
   MemoryCreate,
   MemoryOut,
   SSEEvent,
+  ToolExecuteRequest,
+  ToolExecuteResponse,
+  ToolExecutionOut,
+  ToolOut,
 } from '@/types/api'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -61,6 +65,19 @@ export const documentsApi = {
     if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
     return res.json() as Promise<DocumentOut>
   },
+}
+
+// ── Tools ──────────────────────────────────────────────────────────────────────
+
+export const toolsApi = {
+  list: () => request<ToolOut[]>('/api/v1/tools'),
+  execute: (name: string, body: ToolExecuteRequest) =>
+    request<ToolExecuteResponse>(`/api/v1/tools/${encodeURIComponent(name)}/execute`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  audit: (limit = 50) =>
+    request<ToolExecutionOut[]>(`/api/v1/tools/audit?limit=${limit}`),
 }
 
 // ── Memory ────────────────────────────────────────────────────────────────────

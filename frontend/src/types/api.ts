@@ -120,6 +120,42 @@ export interface MemoryCreate {
   data_classification?: string
 }
 
+export interface ToolOut {
+  name: string
+  description: string
+  risk_level: string
+  parameters_schema: Record<string, unknown>
+}
+
+export interface ToolExecuteRequest {
+  parameters?: Record<string, unknown>
+  confirmation_id?: string
+}
+
+export interface ToolExecuteResponse {
+  tool_name: string
+  success: boolean
+  output: string
+  error: string | null
+  truncated: boolean
+  policy_decision: string
+  policy_rule: string
+  reason: string
+  requires_confirmation: boolean
+}
+
+export interface ToolExecutionOut {
+  id: number
+  tool_name: string
+  risk_level: string
+  policy_rule: string
+  policy_decision: string
+  success: boolean
+  error: string | null
+  duration_ms: number
+  created_at: string
+}
+
 /** Health API */
 export interface DependencyStatus {
   name: string
