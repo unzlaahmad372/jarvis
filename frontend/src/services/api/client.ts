@@ -17,6 +17,7 @@ import type {
   ToolExecuteResponse,
   ToolExecutionOut,
   ToolOut,
+  VoiceSettingsOut,
 } from '@/types/api'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -93,6 +94,12 @@ export const memoryApi = {
     request<{ deleted: boolean; memory_id: number }>(`/api/v1/memory/${id}`, { method: 'DELETE' }),
   purge: () =>
     request<{ purged: number }>('/api/v1/memory', { method: 'DELETE' }),
+}
+
+// ── Voice ────────────────────────────────────────────────────────────────────
+
+export const voiceApi = {
+  settings: () => request<VoiceSettingsOut>('/api/v1/voice/settings'),
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────

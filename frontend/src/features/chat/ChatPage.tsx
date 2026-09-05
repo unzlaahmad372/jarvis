@@ -1,7 +1,9 @@
 import { useRef, useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { chatApi, conversationsApi } from '@/services/api/client'
+import { chatApi, conversationsApi, voiceApi } from '@/services/api/client'
 import { useChatStore } from '@/app/stores/chatStore'
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
+import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
 import type { MessageOut, ResponseCompletePayload, SSEEvent } from '@/types/api'
 import styles from './ChatPage.module.css'
 
@@ -66,6 +68,26 @@ export function ChatPage() {
   const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  const stt = useSpeechRecognition()
+  const tts = useSpeechSynthesis()
+
+  // Fetch voice settings once
+  const { data: voiceSettings } = useQuery({
+    queryKey: ['voice-settings'],
+    queryFn: () => voiceApi.settings(),
+    staleTime: Infinity,
+  })
+
+  const voiceEnabled = voiceSettings?.enabled ?? false
+  const autoSpeak = voiceSettings?.auto_speak ?? false
+
+  // When STT produces a transcript, fill the input and auto-send
+  useEffect(() => {
+    if (!stt.transcript) return
+    setInput(stt.transcript)
+    stt.reset()
+  }, [stt.transcript, stt])
+
   // Load conversation messages
   const { data: conversation } = useQuery({
     queryKey: ['conversation', activeConversationId],
@@ -129,6 +151,9 @@ export function ChatPage() {
       case 'RESPONSE_COMPLETE': {
         const p = event.payload as ResponseCompletePayload
         onComplete(p.conversation_id)
+        if (autoSpeak && tts.supported) {
+          tts.speak(p.content)
+        }
         break
       }
       case 'ERROR': {
@@ -141,6 +166,7 @@ export function ChatPage() {
 
   const handleCancel = () => {
     abortRef.current?.abort()
+    tts.cancel()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -182,6 +208,17 @@ export function ChatPage() {
       {/* Input area */}
       <div className={styles.inputArea}>
         <div className={styles.inputRow}>
+          {voiceEnabled && stt.supported && (
+            <button
+              className={`${styles.micBtn} ${stt.listening ? styles.micActive : ''}`}
+              onClick={stt.listening ? stt.stop : stt.start}
+              disabled={isStreaming}
+              aria-label={stt.listening ? 'Stop recording' : 'Start voice input'}
+              title={stt.listening ? 'Stop recording' : 'Push to talk'}
+            >
+              {stt.listening ? '⏹' : '🎤'}
+            </button>
+          )}
           <textarea
             ref={textareaRef}
             className={styles.textarea}

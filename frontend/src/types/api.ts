@@ -156,6 +156,11 @@ export interface ToolExecutionOut {
   created_at: string
 }
 
+export interface VoiceSettingsOut {
+  enabled: boolean
+  auto_speak: boolean
+}
+
 /** Health API */
 export interface DependencyStatus {
   name: string

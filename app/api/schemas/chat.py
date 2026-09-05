@@ -166,6 +166,14 @@ class ToolExecutionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Voice ────────────────────────────────────────────────────────────────────
+
+
+class VoiceSettingsOut(BaseModel):
+    enabled: bool
+    auto_speak: bool
+
+
 # ── SSE event payloads ────────────────────────────────────────────────────────
 
 

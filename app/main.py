@@ -26,6 +26,7 @@ from app.api.routes import documents as documents_router
 from app.api.routes import health as health_router
 from app.api.routes import memory as memory_router
 from app.api.routes import tools as tools_router
+from app.api.routes import voice as voice_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import close_db, init_db
@@ -169,6 +170,7 @@ def create_app() -> FastAPI:
     app.include_router(documents_router.router)
     app.include_router(memory_router.router)
     app.include_router(tools_router.router)
+    app.include_router(voice_router.router)
 
     return app
 

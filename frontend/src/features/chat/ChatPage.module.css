@@ -212,6 +212,44 @@
   color: var(--hud-danger) !important;
 }
 
+.micBtn {
+  background: var(--hud-surface-elevated);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  color: var(--hud-text-secondary);
+  font-size: 1.1rem;
+  padding: 10px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--hud-motion-fast), border-color var(--hud-motion-fast), box-shadow var(--hud-motion-fast);
+}
+
+.micBtn:hover:not(:disabled) {
+  border-color: var(--hud-accent-muted);
+  box-shadow: var(--hud-glow-soft);
+}
+
+.micBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.micActive {
+  background: rgba(255, 61, 61, 0.12);
+  border-color: var(--hud-danger);
+  box-shadow: 0 0 8px rgba(255, 61, 61, 0.4);
+  animation: micPulse 1s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 61, 61, 0.4); }
+  50% { box-shadow: 0 0 16px rgba(255, 61, 61, 0.7); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .micActive { animation: none; }
+}
+
 .statusBar {
   display: flex;
   justify-content: space-between;

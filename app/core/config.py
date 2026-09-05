@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     tool_log_retention_days: int = 90
     temp_retention_hours: int = 24
 
+    # ── Voice ─────────────────────────────────────────────────────────────────
+    enable_voice: bool = True
+    voice_auto_speak: bool = True
+
     # ── Feature flags ────────────────────────────────────────────────────────
     enable_cloud: bool = False
     enable_shell: bool = False
