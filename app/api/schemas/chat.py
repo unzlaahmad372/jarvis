@@ -417,6 +417,24 @@ class BackupDrillOut(BaseModel):
     checks: list[BackupDrillCheckOut]
 
 
+# ── Confirmation (Phase 9 §71) ───────────────────────────────────────────────
+
+
+class ConfirmationOut(BaseModel):
+    confirmation_id: str
+    tool_name: str
+    risk_level: str
+    policy_rule: str
+    action_digest: str
+    expires_at: datetime
+
+
+class ConfirmRequest(BaseModel):
+    confirmation_id: str
+    tool_name: str
+    parameters: dict[str, object] = {}
+
+
 # ── SSE event payloads ────────────────────────────────────────────────────────
 
 

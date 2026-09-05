@@ -1,14 +1,20 @@
 """AgentPlanner — multi-step task decomposition and tool execution.
 
 Flow per turn:
-  1. IntentRouter classifies the message.
-  2. Planner selects zero or more tools appropriate for the intent.
+  1. TaskDecomposer splits the message into ordered sub-tasks.
+  2. Each sub-task selects tools appropriate for its intent.
   3. Tools are executed sequentially through ToolExecutor (PolicyEngine enforced).
   4. Tool results are assembled into ContextSlots for ContextBuilder.
   5. Orchestrator calls the LLM with the enriched context.
 
 The LLM proposes; the PolicyEngine decides; the ToolExecutor runs.
 The planner never bypasses the security boundary.
+
+Confirmation flow (spec §71):
+  - When a tool requires confirmation, a PendingConfirmation is created.
+  - The confirmation_id is returned to the caller.
+  - On the next request, the caller supplies confirmation_id in ToolRequest.
+  - ConfirmationStore.consume() verifies digest + expiry before allowing execution.
 """
 
 from __future__ import annotations
@@ -17,8 +23,10 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.brain.confirmation import ConfirmationStore, get_confirmation_store
 from app.brain.context_builder import ContextSlot
-from app.brain.intent_router import Intent, IntentRouter
+from app.brain.intent_router import Intent
+from app.brain.task_decomposer import decompose
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.tools.base import PolicyDecisionType, ToolRequest
@@ -27,7 +35,7 @@ from app.tools.registry import ToolRegistry
 
 logger = get_logger(__name__)
 
-PLANNER_VERSION = "1.0"
+PLANNER_VERSION = "2.0"
 
 
 @dataclass
@@ -41,6 +49,7 @@ class PlanStep:
     error: str | None = None
     policy_decision: str = "ALLOW"
     requires_confirmation: bool = False
+    confirmation_id: str | None = None  # set when confirmation is pending
 
 
 @dataclass
@@ -52,21 +61,7 @@ class PlanResult:
     steps: list[PlanStep] = field(default_factory=list)
     tool_context_slots: list[ContextSlot] = field(default_factory=list)
     blocked: bool = False  # True if a required tool was denied/needs confirmation
-
-
-# ── Intent → tool mapping ─────────────────────────────────────────────────────
-
-# Maps intent to a list of (tool_name, parameter_builder_key).
-# parameter_builder_key is used by _build_params to construct tool parameters
-# from the user message.
-_INTENT_TOOLS: dict[Intent, list[str]] = {
-    Intent.SYSTEM_OPERATION: ["system_info", "disk_usage"],
-    Intent.FILE_OPERATION: [],   # requires path extraction — skipped without explicit path
-    Intent.AUTOMATION_OPERATION: [],  # REST API handles this; planner provides context only
-    Intent.KNOWLEDGE_SEARCH: [],  # handled by RAG pipeline in orchestrator
-    Intent.MEMORY_SEARCH: [],     # handled by memory pipeline in orchestrator
-    Intent.GENERAL_CHAT: [],
-}
+    sub_tasks: int = 1  # number of sub-tasks decomposed
 
 
 class AgentPlanner:
@@ -77,67 +72,96 @@ class AgentPlanner:
         registry: ToolRegistry,
         executor: ToolExecutor,
         settings: Settings,
+        confirmation_store: ConfirmationStore | None = None,
     ) -> None:
         self._registry = registry
         self._executor = executor
         self._settings = settings
-        self._router = IntentRouter()
+        self._confirmation_store = confirmation_store or get_confirmation_store()
 
     async def plan(
         self,
         message: str,
         session: AsyncSession,
     ) -> PlanResult:
-        """Classify the message, run appropriate tools, return enriched context."""
-        intent, method = self._router.route(message)
-        result = PlanResult(intent=intent, classification_method=method)
+        """Decompose the message into sub-tasks, run tools, return enriched context."""
+        sub_tasks = decompose(message)
 
-        tool_names = _INTENT_TOOLS.get(intent, [])
-        if not tool_names:
-            return result
+        # Primary intent = first sub-task's intent
+        primary = sub_tasks[0]
+        result = PlanResult(
+            intent=primary.intent,
+            classification_method=primary.classification_method,
+            sub_tasks=len(sub_tasks),
+        )
 
-        for tool_name in tool_names:
-            tool = self._registry.get(tool_name)
-            if tool is None:
+        for task in sub_tasks:
+            if not task.tool_names:
                 continue
 
-            params = self._build_params(tool_name, message)
-            request = ToolRequest(tool_name=tool_name, parameters=params)
+            for tool_name in task.tool_names:
+                tool = self._registry.get(tool_name)
+                if tool is None:
+                    continue
 
-            tool_result, decision = await self._executor.execute(request, session)
+                params = self._build_params(tool_name, message)
+                request = ToolRequest(tool_name=tool_name, parameters=params)
 
-            step = PlanStep(
-                tool_name=tool_name,
-                parameters=params,
-                success=tool_result.success,
-                output=tool_result.output,
-                error=tool_result.error,
-                policy_decision=decision.decision.value,
-                requires_confirmation=decision.decision == PolicyDecisionType.REQUIRES_CONFIRMATION,
-            )
-            result.steps.append(step)
+                tool_result, decision = await self._executor.execute(request, session)
 
-            if decision.decision == PolicyDecisionType.DENY:
-                result.blocked = True
-                logger.warning("plan_step_denied", tool=tool_name, reason=decision.reason)
-                break
+                confirmation_id: str | None = None
+                if decision.decision == PolicyDecisionType.REQUIRES_CONFIRMATION:
+                    pending = self._confirmation_store.create(
+                        tool_name=tool_name,
+                        parameters=params,
+                        risk_level=decision.risk_level.value,
+                        policy_rule=decision.policy_rule,
+                    )
+                    confirmation_id = pending.confirmation_id
 
-            if decision.decision == PolicyDecisionType.REQUIRES_CONFIRMATION:
-                result.blocked = True
-                logger.info("plan_step_needs_confirmation", tool=tool_name)
-                break
-
-            if tool_result.success and tool_result.output:
-                slot = ContextSlot(
-                    name=f"tool:{tool_name}",
-                    content=f"[{tool_name} result]\n{tool_result.output}",
-                    priority=3,  # between user message (2) and RAG (4)
+                step = PlanStep(
+                    tool_name=tool_name,
+                    parameters=params,
+                    success=tool_result.success,
+                    output=tool_result.output,
+                    error=tool_result.error,
+                    policy_decision=decision.decision.value,
+                    requires_confirmation=(
+                        decision.decision == PolicyDecisionType.REQUIRES_CONFIRMATION
+                    ),
+                    confirmation_id=confirmation_id,
                 )
-                result.tool_context_slots.append(slot)
+                result.steps.append(step)
+
+                if decision.decision == PolicyDecisionType.DENY:
+                    result.blocked = True
+                    logger.warning("plan_step_denied", tool=tool_name, reason=decision.reason)
+                    break
+
+                if decision.decision == PolicyDecisionType.REQUIRES_CONFIRMATION:
+                    result.blocked = True
+                    logger.info(
+                        "plan_step_needs_confirmation",
+                        tool=tool_name,
+                        confirmation_id=confirmation_id,
+                    )
+                    break
+
+                if tool_result.success and tool_result.output:
+                    slot = ContextSlot(
+                        name=f"tool:{tool_name}",
+                        content=f"[{tool_name} result]\n{tool_result.output}",
+                        priority=3,  # between user message (2) and RAG (4)
+                    )
+                    result.tool_context_slots.append(slot)
+
+            if result.blocked:
+                break
 
         logger.info(
             "plan_complete",
-            intent=intent,
+            intent=result.intent,
+            sub_tasks=result.sub_tasks,
             steps=len(result.steps),
             blocked=result.blocked,
         )
