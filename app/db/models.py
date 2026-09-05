@@ -3,13 +3,14 @@
 Phase 0: Setting, Workspace
 Phase 1: Conversation, Message, ConversationSummary
 Phase 2: Document, DocumentChunk
+Phase 3: Memory
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -235,3 +236,49 @@ class DocumentChunk(Base):
 
     def __repr__(self) -> str:
         return f"<DocumentChunk id={self.id} doc={self.document_id} idx={self.chunk_index}>"
+
+
+class Memory(Base):
+    """A durable long-term memory entry.
+
+    Created explicitly via 'remember' commands or the memory API.
+    Never auto-created from every conversation turn.
+
+    Data classifications: PUBLIC, PERSONAL, CONFIDENTIAL, SECRET
+    Categories: preference, decision, fact, project, entity, other
+    """
+
+    __tablename__ = "memories"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="fact"
+    )  # preference | decision | fact | project | entity | other
+    importance: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=5
+    )  # 1 (low) – 10 (high)
+    confidence: Mapped[float] = mapped_column(
+        Float, nullable=False, default=1.0
+    )  # 0.0 – 1.0
+    source: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # e.g. "conversation:42" or "manual"
+    data_classification: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="PERSONAL"
+    )  # PUBLIC | PERSONAL | CONFIDENTIAL | SECRET
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+    last_accessed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    def __repr__(self) -> str:
+        return f"<Memory id={self.id} category={self.category!r} importance={self.importance}>"

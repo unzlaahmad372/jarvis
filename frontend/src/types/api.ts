@@ -98,6 +98,28 @@ export interface DocumentOut {
   updated_at: string
 }
 
+export interface MemoryOut {
+  id: number
+  content: string
+  category: string
+  importance: number
+  confidence: number
+  source: string | null
+  data_classification: string
+  created_at: string
+  updated_at: string
+  last_accessed_at: string | null
+}
+
+export interface MemoryCreate {
+  content: string
+  category?: string
+  importance?: number
+  confidence?: number
+  source?: string
+  data_classification?: string
+}
+
 /** Health API */
 export interface DependencyStatus {
   name: string

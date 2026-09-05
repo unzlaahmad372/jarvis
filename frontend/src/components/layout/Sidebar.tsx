@@ -4,6 +4,7 @@ import styles from './Sidebar.module.css'
 const NAV_ITEMS = [
   { to: '/chat', label: 'Chat', icon: '💬' },
   { to: '/documents', label: 'Documents', icon: '📄' },
+  { to: '/memory', label: 'Memory', icon: '🧠' },
   { to: '/system', label: 'System', icon: '⚡' },
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ] as const

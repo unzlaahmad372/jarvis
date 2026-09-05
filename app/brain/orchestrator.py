@@ -21,6 +21,7 @@ from app.knowledge.embeddings import EmbeddingProvider
 from app.knowledge.retrieval import RetrievalResult, retrieve
 from app.knowledge.vector_store import VectorStore
 from app.llm.base import LLMProvider
+from app.memory.manager import build_memory_context_slot, remember, search_memories
 
 logger = get_logger(__name__)
 
@@ -123,6 +124,22 @@ class ChatOrchestrator:
             compacted = True
             messages, summaries = await self._load_history(session, conversation)
 
+        # ── Remember command detection ─────────────────────────────────────────
+        lower = user_message.lower().strip()
+        if lower.startswith(("remember ", "remember that ", "remember: ")):
+            if lower.startswith("remember that "):
+                content = user_message[len("remember that "):].strip()
+            elif lower.startswith("remember: "):
+                content = user_message[len("remember: "):].strip()
+            else:
+                content = user_message[len("remember "):].strip()
+            await remember(
+                session,
+                content=content,
+                source=f"conversation:{conversation.id}",
+            )
+            await session.flush()
+
         # ── RAG retrieval ─────────────────────────────────────────────────────
         rag_result: RetrievalResult | None = None
         if self._embedding_provider and self._vector_store:
@@ -135,6 +152,12 @@ class ChatOrchestrator:
                 rag_token_budget=self._settings.rag_context_tokens,
             )
 
+        # ── Memory retrieval ──────────────────────────────────────────────────
+        memories = await search_memories(session, user_message, limit=8)
+        memory_slot = build_memory_context_slot(
+            memories, token_budget=self._settings.memory_context_tokens
+        )
+
         # ── Build context ─────────────────────────────────────────────────────
         history_slots = build_history_slots(
             messages, summaries, self._settings.recent_history_tokens
@@ -142,6 +165,8 @@ class ChatOrchestrator:
         extra_slots = list(history_slots)
         if rag_result and rag_result.context_slot:
             extra_slots.append(rag_result.context_slot)
+        if memory_slot:
+            extra_slots.append(memory_slot)
 
         built = self._context_builder.build(
             user_message=user_message,

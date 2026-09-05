@@ -101,6 +101,33 @@ class DocumentOut(BaseModel):
 # ── SSE event payloads ────────────────────────────────────────────────────────
 
 
+class MemoryOut(BaseModel):
+    id: int
+    content: str
+    category: str
+    importance: int
+    confidence: float
+    source: str | None = None
+    data_classification: str
+    created_at: datetime
+    updated_at: datetime
+    last_accessed_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class MemoryCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=10_000)
+    category: str = Field(default="fact")
+    importance: int = Field(default=5, ge=1, le=10)
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    source: str | None = None
+    data_classification: str = Field(default="PERSONAL")
+
+
+# ── SSE event payloads ────────────────────────────────────────────────────────
+
+
 class SSEEvent(BaseModel):
     """Envelope for all SSE events (spec §123.6)."""
 

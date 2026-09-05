@@ -10,6 +10,8 @@ import type {
   ConversationOut,
   DependenciesResponse,
   DocumentOut,
+  MemoryCreate,
+  MemoryOut,
   SSEEvent,
 } from '@/types/api'
 
@@ -59,6 +61,21 @@ export const documentsApi = {
     if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
     return res.json() as Promise<DocumentOut>
   },
+}
+
+// ── Memory ────────────────────────────────────────────────────────────────────
+
+export const memoryApi = {
+  list: (category?: string) => {
+    const params = category ? `?category=${encodeURIComponent(category)}` : ''
+    return request<MemoryOut[]>(`/api/v1/memory${params}`)
+  },
+  create: (body: MemoryCreate) =>
+    request<MemoryOut>('/api/v1/memory', { method: 'POST', body: JSON.stringify(body) }),
+  delete: (id: number) =>
+    request<{ deleted: boolean; memory_id: number }>(`/api/v1/memory/${id}`, { method: 'DELETE' }),
+  purge: () =>
+    request<{ purged: number }>('/api/v1/memory', { method: 'DELETE' }),
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
