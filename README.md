@@ -3,7 +3,7 @@
 A private, local-first AI assistant inspired by JARVIS from Iron Man.
 Runs entirely on your machine. No cloud account required.
 
-**Current status: Phase 11 — Remote/Mobile Auth complete**
+**Current status: Phase 12 — Production Hardening complete**
 
 - ✅ Phase 0 — FastAPI backend, SQLite, Ollama, health endpoints
 - ✅ Phase 1 — Persistent chat, streaming (SSE), context budgeting, React/Vite frontend
@@ -17,7 +17,7 @@ Runs entirely on your machine. No cloud account required.
 - ✅ Phase 9 — Advanced Agent Capabilities (multi-step planning, task decomposition, confirmation flow)
 - ✅ Phase 10 — Backup & Recovery Hardening (BackupManager, RestoreDrill, integrity checks)
 - ✅ Phase 11 — Remote/Mobile Auth (JWT, device registry, scoped authorization, rate limiting)
-- 🔜 Phase 12 — TBD
+- ✅ Phase 12 — Production Hardening (audit log API, data retention enforcement, secrets validation, privacy docs)
 
 ---
 
@@ -297,4 +297,4 @@ See [docs/security.md](docs/security.md) for full details.
 | 9 | Advanced Agent — multi-step planning, task decomposition, confirmation flow | ✅ Done |
 | 10 | Backup & Recovery — BackupManager, RestoreDrill, integrity checks | ✅ Done |
 | 11 | Remote/Mobile Auth — JWT, device registry, scoped authorization, rate limiting | ✅ Done |
-| 12 | TBD | 🔜 Next |
+| 12 | Production Hardening — audit log, retention enforcement, secrets validation | ✅ Done |

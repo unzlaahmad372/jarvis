@@ -435,6 +435,16 @@ class ConfirmRequest(BaseModel):
     parameters: dict[str, object] = {}
 
 
+# ── Audit (Phase 12) ────────────────────────────────────────────────────────
+
+
+class AuditPageOut(BaseModel):
+    items: list[ToolExecutionOut]
+    total: int
+    limit: int
+    offset: int
+
+
 # ── SSE event payloads ────────────────────────────────────────────────────────
 
 

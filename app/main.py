@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from starlette.middleware.base import RequestResponseEndpoint
 
+from app.api.routes import audit as audit_router
 from app.api.routes import auth as auth_router
 from app.api.routes import automation as automation_router
 from app.api.routes import backup as backup_router
@@ -115,6 +116,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     configure_logging(settings.log_level)
 
+    # ── Secrets validation ────────────────────────────────────────────────────
+    from app.core.secrets import validate_secrets
+
+    validate_secrets(
+        settings.auth_secret_key,
+        remote_access_enabled=settings.enable_remote_access,
+    )
+
     logger.info(
         "jarvis_starting",
         version="0.1.0",
@@ -201,6 +210,7 @@ def create_app() -> FastAPI:
     app.include_router(automation_router.router)
     app.include_router(backup_router.router)
     app.include_router(auth_router.router)
+    app.include_router(audit_router.router)
 
     # ── Rate limiting middleware ────────────────────────────────────────────────────────────────
     if settings.rate_limit_enabled:
