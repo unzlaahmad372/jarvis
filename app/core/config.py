@@ -101,6 +101,19 @@ class Settings(BaseSettings):
     spinnaker_gate_url: str = "http://127.0.0.1:8084"
     spinnaker_token: str = ""  # never logged
 
+    # ── Backup ────────────────────────────────────────────────────────────────
+    backup_retention_days: int = 30
+
+    # ── Remote / Auth (Phase 11) ──────────────────────────────────────────────
+    # Secret key for signing JWTs — MUST be overridden in production via env var
+    auth_secret_key: str = "change-me-in-production-use-a-long-random-secret"  # noqa: S105
+    auth_algorithm: str = "HS256"
+    auth_access_token_expire_minutes: int = 60
+    auth_refresh_token_expire_days: int = 30
+    # Rate limiting (requests per minute per device/IP)
+    rate_limit_rpm: int = 60
+    rate_limit_enabled: bool = True
+
     # ── Automation ────────────────────────────────────────────────────────────
     enable_automation: bool = True
     automation_max_jobs: int = 50
@@ -156,6 +169,10 @@ class Settings(BaseSettings):
     @property
     def indexes_dir(self) -> Path:
         return self.data_dir / "indexes"
+
+    @property
+    def backup_dir(self) -> Path:
+        return self.data_dir / "backups"
 
 
 @lru_cache(maxsize=1)

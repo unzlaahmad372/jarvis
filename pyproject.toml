@@ -21,6 +21,7 @@ dependencies = [
     "python-docx>=1.1",
     "python-multipart>=0.0.9",
     "kubernetes>=29.0",
+    "python-jose[cryptography]>=3.3",
 ]
 
 [project.optional-dependencies]

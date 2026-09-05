@@ -47,6 +47,7 @@ async def test_client(db_engine: AsyncEngine):  # type: ignore[return]
     import app.db.database as db_module
     from app.core.config import get_settings
     from app.main import create_app
+    from app.security.rate_limiter import RateLimiter, reset_rate_limiter
     from tests.fakes.llm import FakeLLMProvider
 
     # Override DB engine with test engine
@@ -57,6 +58,9 @@ async def test_client(db_engine: AsyncEngine):  # type: ignore[return]
 
     # Override LLM provider with fake — no Ollama required
     chat_module.set_llm_provider(FakeLLMProvider())
+
+    # Use a high-capacity rate limiter so tests are never blocked
+    reset_rate_limiter(RateLimiter(rate_per_minute=10_000))
 
     # Register tools (lifespan doesn't run in test client)
     from app.main import _register_tools
@@ -74,3 +78,4 @@ async def test_client(db_engine: AsyncEngine):  # type: ignore[return]
     finally:
         # Clean up provider override
         chat_module.set_llm_provider(None)
+        reset_rate_limiter(None)

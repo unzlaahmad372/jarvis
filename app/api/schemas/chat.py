@@ -341,6 +341,82 @@ class AutomationJobsOut(BaseModel):
     total: int
 
 
+# ── Auth / Device Registry (Phase 11) ──────────────────────────────────────────────
+
+
+class DeviceRegisterRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    device_type: str = Field(default="desktop")  # desktop | mobile | tablet | api
+    requested_scopes: list[str] = Field(default_factory=list)
+
+
+class DeviceOut(BaseModel):
+    device_id: str
+    name: str
+    device_type: str
+    scopes: list[str]
+    revoked: bool
+    created_at: datetime
+    last_seen_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"  # noqa: S105
+    expires_in_seconds: int
+    scopes: list[str]
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+# ── Backup ───────────────────────────────────────────────────────────────────
+
+
+class BackupOut(BaseModel):
+    backup_id: str
+    created_at: datetime
+    app_version: str
+    database_schema_version: str
+    contents: list[str]
+    checksum_sha256: str
+    notes: str
+
+
+class BackupListOut(BaseModel):
+    backups: list[BackupOut]
+    total: int
+
+
+class BackupVerifyOut(BaseModel):
+    backup_id: str
+    ok: bool
+    message: str
+
+
+class BackupRestoreOut(BaseModel):
+    backup_id: str
+    restored_db_path: str
+    message: str
+
+
+class BackupDrillCheckOut(BaseModel):
+    name: str
+    passed: bool
+    detail: str
+
+
+class BackupDrillOut(BaseModel):
+    backup_id: str
+    passed: bool
+    summary: str
+    checks: list[BackupDrillCheckOut]
+
+
 # ── SSE event payloads ────────────────────────────────────────────────────────
 
 

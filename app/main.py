@@ -20,7 +20,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from starlette.middleware.base import RequestResponseEndpoint
 
+from app.api.routes import auth as auth_router
 from app.api.routes import automation as automation_router
+from app.api.routes import backup as backup_router
 from app.api.routes import chat as chat_router
 from app.api.routes import cicd as cicd_router
 from app.api.routes import conversations as conversations_router
@@ -197,6 +199,32 @@ def create_app() -> FastAPI:
     app.include_router(kubernetes_router.router)
     app.include_router(cicd_router.router)
     app.include_router(automation_router.router)
+    app.include_router(backup_router.router)
+    app.include_router(auth_router.router)
+
+    # ── Rate limiting middleware ────────────────────────────────────────────────────────────────
+    if settings.rate_limit_enabled:
+        from app.security.rate_limiter import get_rate_limiter
+
+        limiter = get_rate_limiter()
+
+        @app.middleware("http")
+        async def rate_limit_middleware(
+            request: Request, call_next: RequestResponseEndpoint
+        ) -> Response:
+            # Key by device_id from token if present, else by client IP
+            key = request.client.host if request.client else "unknown"
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                # Use first 16 chars of token as key suffix (not the full secret)
+                key = f"token:{auth_header[7:23]}"
+            if not limiter.is_allowed(key):
+                return Response(
+                    content='{"error":{"code":"RATE_LIMITED","message":"Too many requests."}}',
+                    status_code=429,
+                    media_type="application/json",
+                )
+            return await call_next(request)
 
     return app
 

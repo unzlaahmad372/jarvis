@@ -396,3 +396,36 @@ class AutomationExecution(Base):
         return (
             f"<AutomationExecution id={self.id} job={self.job_id} status={self.status!r}>"
         )
+
+
+class Device(Base):
+    """A registered device for Phase 11 remote/mobile access.
+
+    Scopes (comma-separated): chat, knowledge.read, memory.read, memory.write,
+      automation.read, system.read, tool.low_risk
+
+    Device types: desktop, mobile, tablet, api
+    """
+
+    __tablename__ = "devices"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    device_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    device_type: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="desktop"
+    )  # desktop | mobile | tablet | api
+    scopes: Mapped[str] = mapped_column(
+        Text, nullable=False, default="chat,knowledge.read"
+    )  # comma-separated scope list
+    revoked: Mapped[bool] = mapped_column(default=False, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    def __repr__(self) -> str:
+        return f"<Device id={self.id} name={self.name!r} revoked={self.revoked}>"
