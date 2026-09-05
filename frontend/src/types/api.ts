@@ -280,3 +280,50 @@ export interface DependenciesResponse {
   jarvis: 'READY' | 'UNHEALTHY' | 'DEGRADED'
   dependencies: DependencyStatus[]
 }
+
+// ── Automation ────────────────────────────────────────────────────────────────
+
+export interface AutomationJobCreate {
+  name: string
+  schedule: string
+  action_type: string
+  action_payload?: Record<string, unknown>
+  description?: string
+  permission_ceiling?: string
+  overlap_policy?: string
+}
+
+export interface AutomationJobOut {
+  id: number
+  name: string
+  description: string | null
+  schedule: string
+  action_type: string
+  action_payload: string
+  permission_ceiling: string
+  overlap_policy: string
+  enabled: boolean
+  created_at: string
+  updated_at: string
+  last_run_at: string | null
+  next_run_at: string | null
+}
+
+export interface AutomationJobsOut {
+  jobs: AutomationJobOut[]
+  total: number
+}
+
+export interface AutomationExecutionOut {
+  id: number
+  job_id: number
+  execution_id: string
+  scheduled_time: string
+  actual_start_time: string | null
+  completion_time: string | null
+  status: string
+  result_summary: string | null
+  error: string | null
+  retry_count: number
+  created_at: string
+}

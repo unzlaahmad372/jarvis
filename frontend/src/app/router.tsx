@@ -7,6 +7,7 @@ import { OperationsPage } from '@/features/operations/OperationsPage'
 import { SystemPage } from '@/features/system/SystemPage'
 import { ToolsPage } from '@/features/tools/ToolsPage'
 import { KubernetesPage } from '@/features/kubernetes/KubernetesPage'
+import { AutomationsPage } from '@/features/automation/AutomationsPage'
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: 'tools', element: <ToolsPage /> },
       { path: 'kubernetes', element: <KubernetesPage /> },
       { path: 'operations', element: <OperationsPage /> },
+      { path: 'automations', element: <AutomationsPage /> },
       { path: 'system', element: <SystemPage /> },
       {
         path: 'settings',

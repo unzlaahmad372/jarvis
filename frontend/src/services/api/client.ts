@@ -4,6 +4,10 @@
  */
 
 import type {
+  AutomationExecutionOut,
+  AutomationJobCreate,
+  AutomationJobOut,
+  AutomationJobsOut,
   ChatRequest,
   ChatResponse,
   ConversationDetail,
@@ -146,6 +150,28 @@ export const spinnakerApi = {
     request<SpinnakerExecutionsOut>(
       `/api/v1/spinnaker/applications/${encodeURIComponent(application)}/pipelines/${encodeURIComponent(pipeline)}/executions?limit=${limit}`
     ),
+}
+
+// ── Automation ────────────────────────────────────────────────────────────────
+
+export const automationApi = {
+  list: () => request<AutomationJobsOut>('/api/v1/automation/jobs'),
+  create: (body: AutomationJobCreate) =>
+    request<AutomationJobOut>('/api/v1/automation/jobs', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  get: (id: number) => request<AutomationJobOut>(`/api/v1/automation/jobs/${id}`),
+  delete: (id: number) =>
+    fetch(`${BASE_URL}/api/v1/automation/jobs/${id}`, { method: 'DELETE' }),
+  enable: (id: number) =>
+    request<AutomationJobOut>(`/api/v1/automation/jobs/${id}/enable`, { method: 'POST' }),
+  disable: (id: number) =>
+    request<AutomationJobOut>(`/api/v1/automation/jobs/${id}/disable`, { method: 'POST' }),
+  trigger: (id: number) =>
+    request<AutomationExecutionOut>(`/api/v1/automation/jobs/${id}/trigger`, { method: 'POST' }),
+  executions: (id: number, limit = 20) =>
+    request<AutomationExecutionOut[]>(`/api/v1/automation/jobs/${id}/executions?limit=${limit}`),
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────

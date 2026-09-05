@@ -5,6 +5,7 @@ Phase 1: Conversation, Message, ConversationSummary
 Phase 2: Document, DocumentChunk
 Phase 3: Memory
 Phase 4: ToolExecution
+Phase 8: AutomationJob, AutomationExecution
 """
 
 from __future__ import annotations
@@ -313,4 +314,85 @@ class ToolExecution(Base):
         return (
             f"<ToolExecution id={self.id} tool={self.tool_name!r}"
             f" decision={self.policy_decision!r}>"
+        )
+
+
+class AutomationJob(Base):
+    """A persistent scheduled automation job.
+
+    Overlap policies: SKIP | QUEUE | REPLACE | ALLOW
+    Permission ceiling: READ_ONLY | LOW_RISK  (SENSITIVE/DANGEROUS never auto-approved)
+    """
+
+    __tablename__ = "automation_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Cron expression or interval spec, e.g. "0 8 * * *" or "interval:3600"
+    schedule: Mapped[str] = mapped_column(String(255), nullable=False)
+    # The action to perform — stored as JSON payload
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False)  # e.g. "tool", "chat"
+    action_payload: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    # Permission ceiling — never exceeds this risk level automatically
+    permission_ceiling: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="READ_ONLY"
+    )  # READ_ONLY | LOW_RISK
+    overlap_policy: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="SKIP"
+    )  # SKIP | QUEUE | REPLACE | ALLOW
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    executions: Mapped[list[AutomationExecution]] = relationship(
+        "AutomationExecution", back_populates="job", lazy="select"
+    )
+
+    def __repr__(self) -> str:
+        return f"<AutomationJob id={self.id} name={self.name!r} enabled={self.enabled}>"
+
+
+class AutomationExecution(Base):
+    """A single execution record for an AutomationJob.
+
+    Statuses: RUNNING | SUCCESS | FAILED | PARTIAL | SKIPPED | TIMEOUT | CANCELLED
+    """
+
+    __tablename__ = "automation_executions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    job_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("automation_jobs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    execution_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)  # UUID
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    scheduled_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    actual_start_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completion_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="RUNNING"
+    )  # RUNNING | SUCCESS | FAILED | PARTIAL | SKIPPED | TIMEOUT | CANCELLED
+    result_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    job: Mapped[AutomationJob] = relationship("AutomationJob", back_populates="executions")
+
+    def __repr__(self) -> str:
+        return (
+            f"<AutomationExecution id={self.id} job={self.job_id} status={self.status!r}>"
         )

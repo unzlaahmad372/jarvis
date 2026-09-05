@@ -101,6 +101,12 @@ class Settings(BaseSettings):
     spinnaker_gate_url: str = "http://127.0.0.1:8084"
     spinnaker_token: str = ""  # never logged
 
+    # ── Automation ────────────────────────────────────────────────────────────
+    enable_automation: bool = True
+    automation_max_jobs: int = 50
+    automation_max_retries: int = 3
+    automation_retry_backoff_seconds: int = 60
+
     # ── Voice ─────────────────────────────────────────────────────────────────
     enable_voice: bool = True
     voice_auto_speak: bool = True

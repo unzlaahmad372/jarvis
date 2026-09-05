@@ -289,6 +289,58 @@ class VoiceSettingsOut(BaseModel):
     auto_speak: bool
 
 
+# ── Automation ───────────────────────────────────────────────────────────────
+
+
+class AutomationJobCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    schedule: str = Field(..., min_length=1, max_length=255)
+    action_type: str = Field(..., min_length=1, max_length=64)
+    action_payload: dict[str, object] = {}
+    description: str | None = None
+    permission_ceiling: str = Field(default="READ_ONLY")
+    overlap_policy: str = Field(default="SKIP")
+
+
+class AutomationExecutionOut(BaseModel):
+    id: int
+    job_id: int
+    execution_id: str
+    scheduled_time: datetime
+    actual_start_time: datetime | None = None
+    completion_time: datetime | None = None
+    status: str
+    result_summary: str | None = None
+    error: str | None = None
+    retry_count: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AutomationJobOut(BaseModel):
+    id: int
+    name: str
+    description: str | None = None
+    schedule: str
+    action_type: str
+    action_payload: str  # JSON string
+    permission_ceiling: str
+    overlap_policy: str
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+    last_run_at: datetime | None = None
+    next_run_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class AutomationJobsOut(BaseModel):
+    jobs: list[AutomationJobOut]
+    total: int
+
+
 # ── SSE event payloads ────────────────────────────────────────────────────────
 
 
