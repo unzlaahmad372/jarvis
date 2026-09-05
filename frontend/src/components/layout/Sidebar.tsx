@@ -9,6 +9,9 @@ const NAV_ITEMS = [
   { to: '/kubernetes', label: 'Kubernetes', icon: '☸' },
   { to: '/operations', label: 'Operations', icon: '📡' },
   { to: '/automations', label: 'Automations', icon: '⏱' },
+  { to: '/backup', label: 'Backup', icon: '💾' },
+  { to: '/auth', label: 'Devices', icon: '🔑' },
+  { to: '/audit', label: 'Audit', icon: '📋' },
   { to: '/system', label: 'System', icon: '⚡' },
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ] as const

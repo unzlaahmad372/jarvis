@@ -307,6 +307,95 @@ export interface DependenciesResponse {
   dependencies: DependencyStatus[]
 }
 
+// ── Auth / Device Registry (Phase 11) ───────────────────────────────────────
+
+export interface DeviceRegisterRequest {
+  name: string
+  device_type?: string
+  requested_scopes?: string[]
+}
+
+export interface DeviceOut {
+  device_id: string
+  name: string
+  device_type: string
+  scopes: string[]
+  revoked: boolean
+  created_at: string
+  last_seen_at: string | null
+}
+
+export interface TokenResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in_seconds: number
+  scopes: string[]
+}
+
+export interface RefreshRequest {
+  refresh_token: string
+}
+
+// ── Backup (Phase 10) ─────────────────────────────────────────────────────────
+
+export interface BackupOut {
+  backup_id: string
+  created_at: string
+  app_version: string
+  database_schema_version: string
+  contents: string[]
+  checksum_sha256: string
+  notes: string
+}
+
+export interface BackupListOut {
+  backups: BackupOut[]
+  total: number
+}
+
+export interface BackupVerifyOut {
+  backup_id: string
+  ok: boolean
+  message: string
+}
+
+export interface BackupRestoreOut {
+  backup_id: string
+  restored_db_path: string
+  message: string
+}
+
+export interface BackupDrillCheckOut {
+  name: string
+  passed: boolean
+  detail: string
+}
+
+export interface BackupDrillOut {
+  backup_id: string
+  passed: boolean
+  summary: string
+  checks: BackupDrillCheckOut[]
+}
+
+// ── Audit / Retention (Phase 12) ──────────────────────────────────────────────
+
+export interface AuditPageOut {
+  items: ToolExecutionOut[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface RetentionResult {
+  conversations_deleted: number
+  tool_executions_deleted: number
+  automation_executions_deleted: number
+  total_deleted: number
+  errors: string[]
+}
+
 // ── Automation ────────────────────────────────────────────────────────────────
 
 export interface AutomationJobCreate {

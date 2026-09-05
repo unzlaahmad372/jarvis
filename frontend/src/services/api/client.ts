@@ -4,10 +4,16 @@
  */
 
 import type {
+  AuditPageOut,
   AutomationExecutionOut,
   AutomationJobCreate,
   AutomationJobOut,
   AutomationJobsOut,
+  BackupDrillOut,
+  BackupListOut,
+  BackupOut,
+  BackupRestoreOut,
+  BackupVerifyOut,
   ChatRequest,
   ChatResponse,
   ConfirmationOut,
@@ -15,6 +21,8 @@ import type {
   ConversationDetail,
   ConversationOut,
   DependenciesResponse,
+  DeviceOut,
+  DeviceRegisterRequest,
   DocumentOut,
   GrafanaDashboardsOut,
   JenkinsBuildOut,
@@ -24,8 +32,11 @@ import type {
   MemoryCreate,
   MemoryOut,
   PrometheusQueryOut,
+  RefreshRequest,
+  RetentionResult,
   SpinnakerExecutionsOut,
   SSEEvent,
+  TokenResponse,
   ToolExecuteRequest,
   ToolExecuteResponse,
   ToolExecutionOut,
@@ -181,6 +192,50 @@ export const automationApi = {
     request<AutomationExecutionOut>(`/api/v1/automation/jobs/${id}/trigger`, { method: 'POST' }),
   executions: (id: number, limit = 20) =>
     request<AutomationExecutionOut[]>(`/api/v1/automation/jobs/${id}/executions?limit=${limit}`),
+}
+
+// ── Auth / Device Registry ─────────────────────────────────────────────────────
+
+export const authApi = {
+  registerDevice: (body: DeviceRegisterRequest) =>
+    request<TokenResponse>('/api/v1/auth/devices', { method: 'POST', body: JSON.stringify(body) }),
+  listDevices: () => request<DeviceOut[]>('/api/v1/auth/devices'),
+  revokeDevice: (id: string) =>
+    request<void>(`/api/v1/auth/devices/${encodeURIComponent(id)}/revoke`, { method: 'POST' }),
+  refreshToken: (body: RefreshRequest) =>
+    request<TokenResponse>('/api/v1/auth/token/refresh', { method: 'POST', body: JSON.stringify(body) }),
+}
+
+// ── Backup ────────────────────────────────────────────────────────────────────
+
+export const backupApi = {
+  create: (notes = '') =>
+    request<BackupOut>(`/api/v1/backup?notes=${encodeURIComponent(notes)}`, { method: 'POST' }),
+  list: () => request<BackupListOut>('/api/v1/backups'),
+  verify: (id: string) =>
+    request<BackupVerifyOut>(`/api/v1/backups/${encodeURIComponent(id)}/verify`, { method: 'POST' }),
+  restore: (id: string) =>
+    request<BackupRestoreOut>(`/api/v1/backups/${encodeURIComponent(id)}/restore`, { method: 'POST' }),
+  drill: (id: string) =>
+    request<BackupDrillOut>(`/api/v1/backups/${encodeURIComponent(id)}/drill`, { method: 'POST' }),
+  delete: (id: string) =>
+    fetch(`${BASE_URL}/api/v1/backups/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+}
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+
+export const auditApi = {
+  list: (params?: { tool_name?: string; policy_decision?: string; success?: boolean; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams()
+    if (params?.tool_name) q.set('tool_name', params.tool_name)
+    if (params?.policy_decision) q.set('policy_decision', params.policy_decision)
+    if (params?.success != null) q.set('success', String(params.success))
+    if (params?.limit != null) q.set('limit', String(params.limit))
+    if (params?.offset != null) q.set('offset', String(params.offset))
+    return request<AuditPageOut>(`/api/v1/audit/tool-executions?${q}`)
+  },
+  runRetention: () =>
+    request<RetentionResult>('/api/v1/audit/retention/run', { method: 'POST' }),
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
