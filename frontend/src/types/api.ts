@@ -187,6 +187,88 @@ export interface VoiceSettingsOut {
   auto_speak: boolean
 }
 
+// ── Jenkins ───────────────────────────────────────────────────────────────────
+
+export interface JenkinsBuildOut {
+  job_name: string
+  build_number: number
+  result: string | null
+  duration_ms: number
+  timestamp: string
+  url: string
+  branch: string | null
+  failed_stage: string | null
+}
+
+export interface JenkinsJobOut {
+  name: string
+  url: string
+  last_build: JenkinsBuildOut | null
+}
+
+export interface JenkinsJobsOut {
+  server: string
+  jobs: JenkinsJobOut[]
+}
+
+// ── Prometheus ─────────────────────────────────────────────────────────────
+
+export interface PrometheusMetricOut {
+  metric: string
+  labels: Record<string, string>
+  value: number
+  timestamp: string
+}
+
+export interface PrometheusQueryOut {
+  query: string
+  status: string
+  results: PrometheusMetricOut[]
+  error: string | null
+}
+
+// ── Grafana ───────────────────────────────────────────────────────────────────
+
+export interface GrafanaDashboardOut {
+  uid: string
+  title: string
+  url: string
+  tags: string[]
+  folder: string | null
+}
+
+export interface GrafanaDashboardsOut {
+  server: string
+  dashboards: GrafanaDashboardOut[]
+}
+
+// ── Spinnaker ─────────────────────────────────────────────────────────────
+
+export interface SpinnakerStageOut {
+  name: string
+  status: string
+  duration_ms: number
+  start_time: string | null
+}
+
+export interface SpinnakerExecutionOut {
+  id: string
+  pipeline_name: string
+  application: string
+  status: string
+  start_time: string | null
+  duration_ms: number
+  trigger: string | null
+  stages: SpinnakerStageOut[]
+  url: string
+}
+
+export interface SpinnakerExecutionsOut {
+  application: string
+  pipeline_name: string
+  executions: SpinnakerExecutionOut[]
+}
+
 /** Health API */
 export interface DependencyStatus {
   name: string

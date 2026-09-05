@@ -21,6 +21,7 @@ from sqlalchemy import select
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.routes import chat as chat_router
+from app.api.routes import cicd as cicd_router
 from app.api.routes import conversations as conversations_router
 from app.api.routes import documents as documents_router
 from app.api.routes import health as health_router
@@ -193,6 +194,7 @@ def create_app() -> FastAPI:
     app.include_router(tools_router.router)
     app.include_router(voice_router.router)
     app.include_router(kubernetes_router.router)
+    app.include_router(cicd_router.router)
 
     return app
 

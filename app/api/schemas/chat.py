@@ -195,6 +195,92 @@ class K8sClusterHealthOut(BaseModel):
     error: str | None = None
 
 
+# ── Jenkins ──────────────────────────────────────────────────────────────────
+
+
+class JenkinsBuildOut(BaseModel):
+    job_name: str
+    build_number: int
+    result: str | None  # SUCCESS, FAILURE, ABORTED, UNSTABLE, None=running
+    duration_ms: int
+    timestamp: datetime
+    url: str
+    branch: str | None = None
+    failed_stage: str | None = None
+
+
+class JenkinsJobOut(BaseModel):
+    name: str
+    url: str
+    last_build: JenkinsBuildOut | None = None
+
+
+class JenkinsJobsOut(BaseModel):
+    server: str
+    jobs: list[JenkinsJobOut]
+
+
+# ── Prometheus ────────────────────────────────────────────────────────────────
+
+
+class PrometheusMetricOut(BaseModel):
+    metric: str
+    labels: dict[str, str]
+    value: float
+    timestamp: datetime
+
+
+class PrometheusQueryOut(BaseModel):
+    query: str
+    status: str  # success, error
+    results: list[PrometheusMetricOut]
+    error: str | None = None
+
+
+# ── Grafana ───────────────────────────────────────────────────────────────────
+
+
+class GrafanaDashboardOut(BaseModel):
+    uid: str
+    title: str
+    url: str
+    tags: list[str]
+    folder: str | None = None
+
+
+class GrafanaDashboardsOut(BaseModel):
+    server: str
+    dashboards: list[GrafanaDashboardOut]
+
+
+# ── Spinnaker ─────────────────────────────────────────────────────────────────
+
+
+class SpinnakerStageOut(BaseModel):
+    name: str
+    status: str  # SUCCEEDED, FAILED_CONTINUE, TERMINAL, RUNNING, CANCELED
+    duration_ms: int
+    start_time: datetime | None = None
+
+
+class SpinnakerExecutionOut(BaseModel):
+    id: str
+    pipeline_name: str
+    application: str
+    status: str
+    start_time: datetime | None = None
+    duration_ms: int
+    trigger: str | None = None
+    stages: list[SpinnakerStageOut]
+    url: str
+
+
+class SpinnakerExecutionsOut(BaseModel):
+    application: str
+    pipeline_name: str
+    executions: list[SpinnakerExecutionOut]
+
+
 # ── Voice ────────────────────────────────────────────────────────────────────
 
 

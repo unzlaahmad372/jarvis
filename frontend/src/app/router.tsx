@@ -3,6 +3,7 @@ import { App } from './App'
 import { ChatPage } from '@/features/chat/ChatPage'
 import { DocumentsPage } from '@/features/documents/DocumentsPage'
 import { MemoryPage } from '@/features/memory/MemoryPage'
+import { OperationsPage } from '@/features/operations/OperationsPage'
 import { SystemPage } from '@/features/system/SystemPage'
 import { ToolsPage } from '@/features/tools/ToolsPage'
 import { KubernetesPage } from '@/features/kubernetes/KubernetesPage'
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
       { path: 'memory', element: <MemoryPage /> },
       { path: 'tools', element: <ToolsPage /> },
       { path: 'kubernetes', element: <KubernetesPage /> },
+      { path: 'operations', element: <OperationsPage /> },
       { path: 'system', element: <SystemPage /> },
       {
         path: 'settings',

@@ -10,10 +10,15 @@ import type {
   ConversationOut,
   DependenciesResponse,
   DocumentOut,
+  GrafanaDashboardsOut,
+  JenkinsBuildOut,
+  JenkinsJobsOut,
   K8sClusterHealthOut,
   K8sContextsOut,
   MemoryCreate,
   MemoryOut,
+  PrometheusQueryOut,
+  SpinnakerExecutionsOut,
   SSEEvent,
   ToolExecuteRequest,
   ToolExecuteResponse,
@@ -110,6 +115,37 @@ export const kubernetesApi = {
 
 export const voiceApi = {
   settings: () => request<VoiceSettingsOut>('/api/v1/voice/settings'),
+}
+
+// ── Jenkins ───────────────────────────────────────────────────────────────────
+
+export const jenkinsApi = {
+  jobs: () => request<JenkinsJobsOut>('/api/v1/jenkins/jobs'),
+  builds: (jobName: string, limit = 10) =>
+    request<JenkinsBuildOut[]>(`/api/v1/jenkins/jobs/${encodeURIComponent(jobName)}/builds?limit=${limit}`),
+}
+
+// ── Prometheus ────────────────────────────────────────────────────────────────
+
+export const prometheusApi = {
+  query: (q: string) =>
+    request<PrometheusQueryOut>(`/api/v1/prometheus/query?q=${encodeURIComponent(q)}`),
+}
+
+// ── Grafana ───────────────────────────────────────────────────────────────────
+
+export const grafanaApi = {
+  dashboards: (q = '') =>
+    request<GrafanaDashboardsOut>(`/api/v1/grafana/dashboards?q=${encodeURIComponent(q)}`),
+}
+
+// ── Spinnaker ─────────────────────────────────────────────────────────────────
+
+export const spinnakerApi = {
+  executions: (application: string, pipeline: string, limit = 5) =>
+    request<SpinnakerExecutionsOut>(
+      `/api/v1/spinnaker/applications/${encodeURIComponent(application)}/pipelines/${encodeURIComponent(pipeline)}/executions?limit=${limit}`
+    ),
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────

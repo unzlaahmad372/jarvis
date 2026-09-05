@@ -79,6 +79,28 @@ class Settings(BaseSettings):
     k8s_max_log_lines: int = 100
     k8s_fan_out_limit: int = 5  # max parallel cluster queries
 
+    # ── Jenkins ───────────────────────────────────────────────────────────────
+    enable_jenkins: bool = False
+    jenkins_url: str = "http://127.0.0.1:8080"
+    jenkins_user: str = ""
+    jenkins_token: str = ""  # API token — never logged
+    jenkins_max_log_lines: int = 200
+
+    # ── Prometheus ────────────────────────────────────────────────────────────
+    enable_prometheus: bool = False
+    prometheus_url: str = "http://127.0.0.1:9090"
+    prometheus_timeout: int = 30
+
+    # ── Grafana ───────────────────────────────────────────────────────────────
+    enable_grafana: bool = False
+    grafana_url: str = "http://127.0.0.1:3000"
+    grafana_token: str = ""  # service-account token — never logged
+
+    # ── Spinnaker ─────────────────────────────────────────────────────────────
+    enable_spinnaker: bool = False
+    spinnaker_gate_url: str = "http://127.0.0.1:8084"
+    spinnaker_token: str = ""  # never logged
+
     # ── Voice ─────────────────────────────────────────────────────────────────
     enable_voice: bool = True
     voice_auto_speak: bool = True
