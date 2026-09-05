@@ -3,12 +3,18 @@
 A private, local-first AI assistant inspired by JARVIS from Iron Man.
 Runs entirely on your machine. No cloud account required.
 
-**Current status: Phase 2 — Chat + RAG complete**
+**Current status: Phase 8 — Automation Engine complete**
 
 - ✅ Phase 0 — FastAPI backend, SQLite, Ollama, health endpoints
 - ✅ Phase 1 — Persistent chat, streaming (SSE), context budgeting, React/Vite frontend
 - ✅ Phase 2 — Document ingestion, embeddings, Chroma vector store, RAG citations
-- 🔜 Phase 3 — Long-term memory
+- ✅ Phase 3 — CI/CD ops (Jenkins, Spinnaker, Grafana)
+- ✅ Phase 4 — Kubernetes read-only cluster queries
+- ✅ Phase 5 — Voice push-to-talk, STT, TTS
+- ✅ Phase 6 — Safe tools, filesystem, policy engine
+- ✅ Phase 7 — Long-term memory
+- ✅ Phase 8 — Automation Engine (scheduler, overlap policies, permission ceilings, REST API)
+- 🔜 Phase 9 — TBD
 
 ---
 
@@ -24,6 +30,8 @@ Browser (React + Vite)  →  http://127.0.0.1:5173
    OllamaProvider  ──  Ollama  →  http://127.0.0.1:11434
            |
    SQLite (chat history)  +  Chroma (vector index)
+           |
+   AutomationScheduler  ──  APScheduler (FakeBackend now, real backend next)
 ```
 
 ---
@@ -168,6 +176,7 @@ Open your browser at **http://127.0.0.1:5173**
 | Upload documents for RAG | Go to `/documents`, upload a `.txt`, `.md`, `.pdf`, or `.docx` file |
 | Ask questions about your documents | Chat normally — JARVIS retrieves relevant chunks automatically |
 | View conversation history | Sidebar on the left |
+| Manage automation jobs | Go to `/automations` — create, enable/disable, trigger, view execution history |
 
 ---
 
@@ -200,7 +209,8 @@ python -m pip_audit                 # dependency audit
 
 ```
 app/
-  api/          FastAPI routes (chat, conversations, documents, health)
+  api/          FastAPI routes (chat, conversations, documents, health, automation)
+  automation/   Scheduler, job persistence, overlap policies, permission ceilings
   brain/        Orchestrator, ContextBuilder, compaction
   core/         Config, logging
   db/           SQLAlchemy models, Alembic migrations
@@ -211,7 +221,7 @@ app/
 frontend/
   src/
     app/        Zustand stores, router
-    features/   Chat page, Documents page
+    features/   Chat page, Documents page, Automations page
     services/   API client (REST + SSE)
     types/      TypeScript types matching FastAPI schemas
 tests/
@@ -275,9 +285,10 @@ See [docs/security.md](docs/security.md) for full details.
 | 0 | Foundation — FastAPI, SQLite, Ollama, health | ✅ Done |
 | 1 | Local chat — persistence, context, streaming | ✅ Done |
 | 2 | RAG — document ingestion, embeddings, citations | ✅ Done |
-| 3 | Memory — long-term, remember/forget | 🔜 Next |
-| 4 | Safe tools — filesystem, policy engine | 🔜 |
-| 5 | Voice — push-to-talk, STT, TTS | 🔜 |
-| 6 | Kubernetes — read-only cluster queries | 🔜 |
-| 7 | CI/CD ops — Jenkins, Spinnaker, Grafana | 🔜 |
-| 8 | Automation — scheduler, recurring tasks | 🔜 |
+| 3 | CI/CD ops — Jenkins, Spinnaker, Grafana | ✅ Done |
+| 4 | Kubernetes — read-only cluster queries | ✅ Done |
+| 5 | Voice — push-to-talk, STT, TTS | ✅ Done |
+| 6 | Safe tools — filesystem, policy engine | ✅ Done |
+| 7 | Memory — long-term, remember/forget | ✅ Done |
+| 8 | Automation — scheduler, overlap policies, permission ceilings | ✅ Done |
+| 9 | TBD | 🔜 Next |
