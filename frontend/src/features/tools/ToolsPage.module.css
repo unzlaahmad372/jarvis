@@ -31,14 +31,19 @@
 .layout {
   display: grid;
   grid-template-columns: 260px 1fr;
+  grid-template-rows: 1fr;
   gap: 1rem;
-  min-height: 300px;
+  height: 420px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .toolList {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .toolCard {
@@ -88,6 +93,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .execTitle {
@@ -203,8 +211,8 @@
   max-height: 300px;
   overflow: auto;
   padding: 0.5rem;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
+  word-break: normal;
 }
 
 .truncated {

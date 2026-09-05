@@ -81,6 +81,9 @@ export function KubernetesPage() {
           {/* Context list */}
           <div className={styles.contextList}>
             <div className={styles.sectionTitle}>Contexts</div>
+            {contextsData.contexts.length === 0 && (
+              <div className={styles.empty}>No kubeconfig found. Run <code>kubectl config</code> to add a cluster.</div>
+            )}
             {contextsData.contexts.map((ctx) => (
               <button
                 key={ctx.name}

@@ -218,7 +218,10 @@ class RealKubernetesClient(KubernetesClient):
     async def list_contexts(self) -> list[K8sContext]:
         if not self._available:
             return []
-        contexts_raw, active = self._k8s_config.list_kube_config_contexts()
+        try:
+            contexts_raw, active = self._k8s_config.list_kube_config_contexts()
+        except Exception:
+            return []
         active_name = active["name"] if active else None
         result = []
         for ctx in contexts_raw:
@@ -231,7 +234,10 @@ class RealKubernetesClient(KubernetesClient):
     async def current_context(self) -> str | None:
         if not self._available:
             return None
-        _, active = self._k8s_config.list_kube_config_contexts()
+        try:
+            _, active = self._k8s_config.list_kube_config_contexts()
+        except Exception:
+            return None
         return active["name"] if active else None
 
     async def list_namespaces(self, context: str) -> list[K8sNamespace]:
