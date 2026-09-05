@@ -13,6 +13,8 @@ from app.brain.compaction import (
     select_messages_to_compact,
 )
 from app.brain.context_builder import ContextBuilder
+from app.brain.intent_router import Intent
+from app.brain.planner import AgentPlanner, PlanResult
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.db.models import Conversation, ConversationSummary, Message, Workspace
@@ -22,6 +24,8 @@ from app.knowledge.retrieval import RetrievalResult, retrieve
 from app.knowledge.vector_store import VectorStore
 from app.llm.base import LLMProvider
 from app.memory.manager import build_memory_context_slot, remember, search_memories
+from app.tools.executor import ToolExecutor
+from app.tools.registry import ToolRegistry
 
 logger = get_logger(__name__)
 
@@ -36,6 +40,8 @@ class ChatOrchestrator:
         inference_manager: InferenceManager,
         embedding_provider: EmbeddingProvider | None = None,
         vector_store: VectorStore | None = None,
+        tool_registry: ToolRegistry | None = None,
+        tool_executor: ToolExecutor | None = None,
     ) -> None:
         self._settings = settings
         self._llm = llm_provider
@@ -46,6 +52,13 @@ class ChatOrchestrator:
             max_context_tokens=settings.max_context_tokens,
             max_response_tokens=settings.max_response_tokens,
         )
+        self._planner: AgentPlanner | None = None
+        if tool_registry is not None and tool_executor is not None:
+            self._planner = AgentPlanner(
+                registry=tool_registry,
+                executor=tool_executor,
+                settings=settings,
+            )
 
     async def _get_or_create_conversation(
         self, session: AsyncSession, conversation_id: int | None
@@ -104,10 +117,10 @@ class ChatOrchestrator:
         session: AsyncSession,
         user_message: str,
         conversation_id: int | None = None,
-    ) -> tuple[Message, Message, bool, RetrievalResult | None]:
+    ) -> tuple[Message, Message, bool, RetrievalResult | None, PlanResult | None]:
         """Execute one chat turn.
 
-        Returns (user_msg, assistant_msg, compacted, rag_result).
+        Returns (user_msg, assistant_msg, compacted, rag_result, plan_result).
         """
         conversation = await self._get_or_create_conversation(session, conversation_id)
         messages, summaries = await self._load_history(session, conversation)
@@ -140,13 +153,26 @@ class ChatOrchestrator:
             )
             await session.flush()
 
-        # ── RAG retrieval ─────────────────────────────────────────────────────
+        # ── Agent planning (intent routing + tool execution) ──────────────────
+        plan_result: PlanResult | None = None
+        if self._planner:
+            plan_result = await self._planner.plan(user_message, session)
+
+        # ── RAG retrieval (skip if planner already handled via tool) ──────────
         rag_result: RetrievalResult | None = None
-        if self._embedding_provider and self._vector_store:
+        do_rag: bool = bool(self._embedding_provider and self._vector_store)
+        if do_rag and plan_result:
+            # Only run RAG for knowledge/general intents
+            do_rag = plan_result.intent in (
+                Intent.KNOWLEDGE_SEARCH,
+                Intent.GENERAL_CHAT,
+                Intent.MEMORY_SEARCH,
+            )
+        if do_rag:
             rag_result = await retrieve(
                 query=user_message,
-                embedding_provider=self._embedding_provider,
-                vector_store=self._vector_store,
+                embedding_provider=self._embedding_provider,  # type: ignore[arg-type]
+                vector_store=self._vector_store,  # type: ignore[arg-type]
                 top_k=self._settings.retrieval_top_k,
                 score_threshold=self._settings.retrieval_score_threshold,
                 rag_token_budget=self._settings.rag_context_tokens,
@@ -163,6 +189,9 @@ class ChatOrchestrator:
             messages, summaries, self._settings.recent_history_tokens
         )
         extra_slots = list(history_slots)
+        # Tool results (priority 3) go in before RAG (priority 4)
+        if plan_result:
+            extra_slots.extend(plan_result.tool_context_slots)
         if rag_result and rag_result.context_slot:
             extra_slots.append(rag_result.context_slot)
         if memory_slot:
@@ -220,9 +249,11 @@ class ChatOrchestrator:
             conversation_id=conversation.id,
             rag_chunks=len(rag_result.chunks) if rag_result else 0,
             compacted=compacted,
+            intent=plan_result.intent if plan_result else None,
+            plan_steps=len(plan_result.steps) if plan_result else 0,
         )
 
-        return user_msg, asst_msg, compacted, rag_result
+        return user_msg, asst_msg, compacted, rag_result, plan_result
 
     async def stream_chat(
         self,
@@ -254,7 +285,7 @@ class ChatOrchestrator:
         yield _event("THINKING", {})
 
         try:
-            user_msg, asst_msg, compacted, rag_result = await self.chat(
+            user_msg, asst_msg, compacted, rag_result, plan_result = await self.chat(
                 session, user_message, conversation_id
             )
         except Exception as exc:
@@ -273,6 +304,19 @@ class ChatOrchestrator:
                 for c in rag_result.citations
             ]
 
+        plan_steps = []
+        if plan_result:
+            plan_steps = [
+                {
+                    "tool_name": s.tool_name,
+                    "success": s.success,
+                    "policy_decision": s.policy_decision,
+                    "requires_confirmation": s.requires_confirmation,
+                    "error": s.error,
+                }
+                for s in plan_result.steps
+            ]
+
         yield _event(
             "RESPONSE_COMPLETE",
             {
@@ -287,5 +331,7 @@ class ChatOrchestrator:
                 "context_tokens": asst_msg.context_tokens,
                 "compacted": compacted,
                 "citations": citations,
+                "intent": plan_result.intent if plan_result else "GENERAL_CHAT",
+                "plan_steps": plan_steps,
             },
         )

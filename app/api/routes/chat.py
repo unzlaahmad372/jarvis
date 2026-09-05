@@ -33,6 +33,8 @@ def _get_orchestrator(settings: object) -> ChatOrchestrator:
     from app.knowledge.embeddings import OllamaEmbeddingProvider
     from app.knowledge.vector_store import ChromaVectorStore
     from app.llm.ollama import OllamaProvider
+    from app.tools.executor import ToolExecutor
+    from app.tools.registry import get_registry
 
     s: Settings = settings  # type: ignore[assignment]
     llm: LLMProvider = _llm_provider_override or OllamaProvider(
@@ -49,12 +51,16 @@ def _get_orchestrator(settings: object) -> ChatOrchestrator:
         embedding_model=s.embedding_model,
         index_version=s.index_version,
     )
+    registry = get_registry()
+    executor = ToolExecutor(registry=registry, settings=s)
     return ChatOrchestrator(
         settings=s,
         llm_provider=llm,
         inference_manager=inference,
         embedding_provider=embedding,
         vector_store=vector_store,
+        tool_registry=registry,
+        tool_executor=executor,
     )
 
 
@@ -82,7 +88,7 @@ async def chat(
         )
 
     try:
-        user_msg, asst_msg, compacted, rag_result = await orchestrator.chat(
+        user_msg, asst_msg, compacted, rag_result, _plan = await orchestrator.chat(
             session, body.message, body.conversation_id
         )
     except ValueError as exc:
