@@ -29,17 +29,17 @@ from app.api.routes import chat as chat_router
 from app.api.routes import cicd as cicd_router
 from app.api.routes import conversations as conversations_router
 from app.api.routes import documents as documents_router
+from app.api.routes import export as export_router
 from app.api.routes import health as health_router
 from app.api.routes import kubernetes as kubernetes_router
 from app.api.routes import mcp as mcp_router
-from app.api.routes import settings as settings_router
-from app.api.routes import export as export_router
-from app.api.routes import workspaces as workspaces_router
-from app.api.routes import plugins as plugins_router
 from app.api.routes import memory as memory_router
+from app.api.routes import plugins as plugins_router
+from app.api.routes import settings as settings_router
 from app.api.routes import tools as tools_router
 from app.api.routes import voice as voice_router
 from app.api.routes import wake as wake_router
+from app.api.routes import workspaces as workspaces_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import close_db, init_db

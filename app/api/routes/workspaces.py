@@ -74,7 +74,9 @@ async def activate_workspace(workspace_id: int, session: DbSession) -> Workspace
         w.is_default = w.id == workspace_id
     await session.commit()
     await session.refresh(ws)
-    return WorkspaceOut(id=ws.id, name=ws.name, description=ws.description, is_default=ws.is_default)
+    return WorkspaceOut(
+        id=ws.id, name=ws.name, description=ws.description, is_default=ws.is_default
+    )
 
 
 @router.delete("/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)

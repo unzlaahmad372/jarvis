@@ -45,7 +45,7 @@ def _scan_plugins(plugins_dir: Path) -> list[PluginOut]:
                 raise ValueError("Cannot load spec")
             mod = importlib.util.module_from_spec(spec)
             sys.modules[spec.name] = mod
-            spec.loader.exec_module(mod)  # type: ignore[union-attr]
+            spec.loader.exec_module(mod)  # noqa: PGH003
 
             tool = getattr(mod, "plugin_tool", None)
             if tool is None:

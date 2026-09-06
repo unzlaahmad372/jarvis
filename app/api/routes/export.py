@@ -61,16 +61,29 @@ async def export_conversation(
         data = {
             "id": conv.id, "title": conv.title,
             "created_at": conv.created_at.isoformat(),
-            "messages": [{"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()} for m in messages],
+            "messages": [
+                {"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()}
+                for m in messages
+            ],
         }
-        return Response(content=json.dumps(data, indent=2), media_type="application/json",
-                        headers={"Content-Disposition": f'attachment; filename="conv-{conv.id}.json"'})
+        fname = f'attachment; filename="conv-{conv.id}.json"'
+        return Response(
+            content=json.dumps(data, indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": fname},
+        )
     if fmt == "txt":
-        return PlainTextResponse(_to_txt(conv, messages),
-                                 headers={"Content-Disposition": f'attachment; filename="conv-{conv.id}.txt"'})
+        fname = f'attachment; filename="conv-{conv.id}.txt"'
+        return PlainTextResponse(
+            _to_txt(conv, messages),
+            headers={"Content-Disposition": fname},
+        )
     # markdown default
-    return PlainTextResponse(_to_markdown(conv, messages),
-                             headers={"Content-Disposition": f'attachment; filename="conv-{conv.id}.md"'})
+    fname = f'attachment; filename="conv-{conv.id}.md"'
+    return PlainTextResponse(
+        _to_markdown(conv, messages),
+        headers={"Content-Disposition": fname},
+    )
 
 
 @router.get("/conversations")

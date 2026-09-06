@@ -6,9 +6,8 @@ POST /api/v1/settings   — patch one or more settings (subset of config)
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from app.core.config import get_settings
 
