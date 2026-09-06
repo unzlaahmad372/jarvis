@@ -216,6 +216,22 @@ export interface K8sClusterHealthOut {
   error: string | null
 }
 
+export interface SettingsOut {
+  llm_model: string
+  embedding_model: string
+  ollama_url: string
+  max_context_tokens: number
+  max_response_tokens: number
+  enable_voice: boolean
+  voice_auto_speak: boolean
+  enable_vision: boolean
+  enable_always_listening: boolean
+  require_confirmation: boolean
+  conversation_retention_days: number
+  tool_log_retention_days: number
+  log_level: string
+}
+
 export interface VoiceSettingsOut {
   enabled: boolean
   auto_speak: boolean

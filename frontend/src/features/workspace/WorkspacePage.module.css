@@ -1,0 +1,24 @@
+.page { padding: 24px; max-width: 600px; }
+.title { font-family: var(--hud-font-mono); font-size: var(--hud-font-size-xl); color: var(--hud-text-primary); letter-spacing: 0.08em; font-weight: 600; margin-bottom: 4px; }
+.subtitle { font-size: var(--hud-font-size-sm); color: var(--hud-text-secondary); margin-bottom: 24px; }
+.error { display: flex; justify-content: space-between; padding: 10px 14px; background: rgba(255,61,61,0.1); border: 1px solid var(--hud-danger); border-radius: var(--hud-radius); color: var(--hud-danger); font-size: var(--hud-font-size-sm); margin-bottom: 16px; }
+.error button { background: none; border: none; color: var(--hud-danger); cursor: pointer; }
+.createBox { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.input { background: var(--hud-surface-elevated); border: 1px solid var(--hud-line); border-radius: var(--hud-radius); color: var(--hud-text-primary); font-family: var(--hud-font-ui); font-size: var(--hud-font-size-sm); padding: 8px 12px; flex: 1; min-width: 140px; }
+.input:focus { outline: none; border-color: var(--hud-accent-muted); }
+.createBtn { background: var(--hud-accent-dim); border: 1px solid var(--hud-accent-muted); color: var(--hud-accent); font-family: var(--hud-font-mono); font-size: var(--hud-font-size-sm); padding: 8px 16px; border-radius: var(--hud-radius); cursor: pointer; white-space: nowrap; }
+.createBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.loading { color: var(--hud-text-secondary); font-family: var(--hud-font-mono); font-size: var(--hud-font-size-sm); }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--hud-surface-elevated); border: 1px solid var(--hud-line); border-radius: var(--hud-radius); gap: 12px; }
+.active { border-color: var(--hud-accent-muted); background: var(--hud-accent-dim); }
+.itemInfo { display: flex; flex-direction: column; gap: 3px; }
+.itemName { font-size: var(--hud-font-size-sm); color: var(--hud-text-primary); display: flex; align-items: center; gap: 8px; }
+.defaultBadge { font-family: var(--hud-font-mono); font-size: 0.6rem; letter-spacing: 0.1em; color: var(--hud-accent); border: 1px solid var(--hud-accent-muted); border-radius: 3px; padding: 1px 5px; }
+.itemDesc { font-size: var(--hud-font-size-xs); color: var(--hud-text-secondary); }
+.itemMeta { font-size: var(--hud-font-size-xs); color: var(--hud-text-dim); font-family: var(--hud-font-mono); }
+.itemActions { display: flex; gap: 6px; flex-shrink: 0; }
+.activateBtn { background: none; border: 1px solid var(--hud-accent-muted); color: var(--hud-accent); font-family: var(--hud-font-mono); font-size: var(--hud-font-size-xs); padding: 5px 10px; border-radius: var(--hud-radius); cursor: pointer; }
+.activateBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.deleteBtn { background: none; border: 1px solid var(--hud-line); color: var(--hud-text-dim); font-size: 0.8rem; padding: 5px 8px; border-radius: var(--hud-radius); cursor: pointer; }
+.deleteBtn:hover { border-color: var(--hud-danger); color: var(--hud-danger); }

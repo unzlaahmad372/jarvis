@@ -13,6 +13,11 @@ import { AuthPage } from '@/features/auth/AuthPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { MCPPage } from '@/features/mcp/MCPPage'
 import { ObservabilityPage } from '@/features/observability/ObservabilityPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
+import { ExportPage } from '@/features/export/ExportPage'
+import { WorkspacePage } from '@/features/workspace/WorkspacePage'
+import { NotificationsPage } from '@/features/notifications/NotificationsPage'
+import { PluginsPage } from '@/features/plugins/PluginsPage'
 
 export const router = createBrowserRouter([
   {
@@ -33,14 +38,11 @@ export const router = createBrowserRouter([
       { path: 'mcp', element: <MCPPage /> },
       { path: 'observability', element: <ObservabilityPage /> },
       { path: 'system', element: <SystemPage /> },
-      {
-        path: 'settings',
-        element: (
-          <div style={{ padding: 24, color: 'var(--hud-text-secondary)', fontFamily: 'var(--hud-font-mono)' }}>
-            Settings — coming in a future phase
-          </div>
-        ),
-      },
+      { path: 'settings', element: <SettingsPage /> },
+      { path: 'export', element: <ExportPage /> },
+      { path: 'workspace', element: <WorkspacePage /> },
+      { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'plugins', element: <PluginsPage /> },
     ],
   },
 ])

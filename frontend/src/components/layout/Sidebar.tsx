@@ -112,6 +112,32 @@ const ICONS: Record<string, JSX.Element> = {
       <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" strokeLinecap="round" />
     </svg>
   ),
+  export: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M10 3v10M6 9l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 15h14" strokeLinecap="round" />
+    </svg>
+  ),
+  workspace: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="2" y="5" width="7" height="10" rx="1" />
+      <rect x="11" y="5" width="7" height="10" rx="1" />
+    </svg>
+  ),
+  notifications: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M10 2a6 6 0 0 1 6 6v3l2 2H2l2-2V8a6 6 0 0 1 6-6z" />
+      <path d="M8 16a2 2 0 0 0 4 0" />
+    </svg>
+  ),
+  plugins: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="3" width="6" height="6" rx="1" />
+      <rect x="11" y="3" width="6" height="6" rx="1" />
+      <rect x="3" y="11" width="6" height="6" rx="1" />
+      <path d="M14 11v2m0 4v-2m0 0h-2m4 0h-2" strokeLinecap="round" />
+    </svg>
+  ),
 }
 
 const NAV_ITEMS = [
@@ -127,8 +153,12 @@ const NAV_ITEMS = [
   { to: '/audit',         label: 'Audit',       icon: 'audit' },
   { to: '/mcp',           label: 'MCP',         icon: 'mcp' },
   { to: '/observability', label: 'Observe',     icon: 'observe' },
-  { to: '/system',        label: 'System',      icon: 'system' },
-  { to: '/settings',      label: 'Settings',    icon: 'settings' },
+  { to: '/system',        label: 'System',        icon: 'system' },
+  { to: '/settings',      label: 'Settings',      icon: 'settings' },
+  { to: '/export',        label: 'Export',        icon: 'export' },
+  { to: '/workspace',     label: 'Workspaces',    icon: 'workspace' },
+  { to: '/notifications', label: 'Alerts',        icon: 'notifications' },
+  { to: '/plugins',       label: 'Plugins',       icon: 'plugins' },
 ] as const
 
 // ── Date grouping ─────────────────────────────────────────────────────────────

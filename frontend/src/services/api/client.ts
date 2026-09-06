@@ -34,6 +34,7 @@ import type {
   PrometheusQueryOut,
   RefreshRequest,
   RetentionResult,
+  SettingsOut,
   SpinnakerExecutionsOut,
   SSEEvent,
   TokenResponse,
@@ -139,6 +140,14 @@ export const kubernetesApi = {
   contexts: () => request<K8sContextsOut>('/api/v1/kubernetes/contexts'),
   health: (context: string) =>
     request<K8sClusterHealthOut>(`/api/v1/kubernetes/health/${encodeURIComponent(context)}`),
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+
+export const settingsApi = {
+  get: () => request<SettingsOut>('/api/v1/settings'),
+  patch: (body: Partial<SettingsOut>) =>
+    request<SettingsOut>('/api/v1/settings', { method: 'POST', body: JSON.stringify(body) }),
 }
 
 // ── Voice ────────────────────────────────────────────────────────────────────
@@ -267,6 +276,25 @@ export const visionApi = {
     if (!res.ok) throw new Error(`Vision error: ${res.status}`)
     return res.json()
   },
+}
+
+// ── Workspaces ──────────────────────────────────────────────────────────────
+
+export const workspacesApi = {
+  list: () => request<{ id: number; name: string; description: string | null; is_default: boolean; conversation_count: number }[]>('/api/v1/workspaces'),
+  create: (body: { name: string; description?: string }) =>
+    request<{ id: number; name: string; description: string | null; is_default: boolean; conversation_count: number }>('/api/v1/workspaces', { method: 'POST', body: JSON.stringify(body) }),
+  activate: (id: number) =>
+    request<{ id: number; name: string; description: string | null; is_default: boolean; conversation_count: number }>(`/api/v1/workspaces/${id}/activate`, { method: 'POST' }),
+  delete: (id: number) =>
+    fetch(`${BASE_URL}/api/v1/workspaces/${id}`, { method: 'DELETE' }),
+}
+
+// ── Plugins ───────────────────────────────────────────────────────────────────
+
+export const pluginsApi = {
+  list: () => request<{ name: string; description: string; risk_level: string; file: string; loaded: boolean; error: string | null }[]>('/api/v1/plugins'),
+  reload: () => request<{ name: string; description: string; risk_level: string; file: string; loaded: boolean; error: string | null }[]>('/api/v1/plugins/reload', { method: 'POST' }),
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
