@@ -238,6 +238,21 @@ export interface TagsOut {
   tags: string[]
 }
 
+export interface ModelOut {
+  name: string
+  size_gb: number | null
+  family: string | null
+}
+
+export interface ModelsOut {
+  models: ModelOut[]
+}
+
+export interface ActiveModelOut {
+  model: string
+  provider: string
+}
+
 export interface SummaryOut {
   conversation_id: number
   title: string | null

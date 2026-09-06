@@ -34,6 +34,7 @@ from app.api.routes import health as health_router
 from app.api.routes import kubernetes as kubernetes_router
 from app.api.routes import mcp as mcp_router
 from app.api.routes import memory as memory_router
+from app.api.routes import models as models_router
 from app.api.routes import plugins as plugins_router
 from app.api.routes import settings as settings_router
 from app.api.routes import tools as tools_router
@@ -299,6 +300,7 @@ def create_app() -> FastAPI:
     app.include_router(export_router.router)
     app.include_router(workspaces_router.router)
     app.include_router(plugins_router.router)
+    app.include_router(models_router.router)
     # ── Rate limiting middleware ────────────────────────────────────────────────────────────────
     if settings.rate_limit_enabled:
         from app.security.rate_limiter import get_rate_limiter

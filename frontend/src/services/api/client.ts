@@ -4,6 +4,7 @@
  */
 
 import type {
+  ActiveModelOut,
   AuditPageOut,
   AutomationExecutionOut,
   AutomationJobCreate,
@@ -31,6 +32,7 @@ import type {
   K8sContextsOut,
   MemoryCreate,
   MemoryOut,
+  ModelsOut,
   PrometheusQueryOut,
   RefreshRequest,
   RetentionResult,
@@ -301,6 +303,18 @@ export const workspacesApi = {
 export const pluginsApi = {
   list: () => request<{ name: string; description: string; risk_level: string; file: string; loaded: boolean; error: string | null }[]>('/api/v1/plugins'),
   reload: () => request<{ name: string; description: string; risk_level: string; file: string; loaded: boolean; error: string | null }[]>('/api/v1/plugins/reload', { method: 'POST' }),
+}
+
+// ── Models (Phase 32) ─────────────────────────────────────────────────────────
+
+export const modelsApi = {
+  list: () => request<ModelsOut>('/api/v1/models'),
+  getActive: () => request<ActiveModelOut>('/api/v1/models/active'),
+  setActive: (model: string) =>
+    request<ActiveModelOut>('/api/v1/models/active', {
+      method: 'POST',
+      body: JSON.stringify({ model }),
+    }),
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────

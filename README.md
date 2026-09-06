@@ -322,4 +322,4 @@ See [docs/security.md](docs/security.md) for full details.
 | 29 | Conversation Intelligence — auto-title, on-demand summary + panel | ✅ Done |
 | 30 | Topic Tags — LLM tag generation, persistence, tag chips in sidebar | ✅ Done |
 | 31 | Auto-tag on first turn, tag button in header, tag filter bar in sidebar | ✅ Done |
-| 32 | Model Switcher — runtime model selection per conversation | 🔄 Next |
+| 32 | Model Switcher — runtime model selection per conversation | ✅ Done |

@@ -48,6 +48,108 @@
   border-radius: var(--hud-radius);
 }
 
+/* ── Model switcher ────────────────────────────────────────────────────────── */
+
+.modelSwitcher {
+  position: relative;
+}
+
+.modelChipBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--hud-font-size-xs);
+  font-family: var(--hud-font-mono);
+  color: var(--hud-text-secondary);
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  background: none;
+  cursor: pointer;
+  transition: color var(--hud-motion-fast), border-color var(--hud-motion-fast);
+}
+
+.modelChipBtn:hover,
+.modelChipOpen {
+  color: var(--hud-accent);
+  border-color: var(--hud-accent-muted);
+}
+
+.modelChevron {
+  font-size: 0.55rem;
+  opacity: 0.6;
+}
+
+.modelDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  background: var(--hud-surface-elevated);
+  border: 1px solid var(--hud-accent-muted);
+  border-radius: var(--hud-radius-lg);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4), var(--hud-glow-soft);
+  z-index: 200;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modelDropdownEmpty {
+  padding: 10px 14px;
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+}
+
+.modelOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--hud-motion-fast);
+  border-bottom: 1px solid var(--hud-line);
+}
+
+.modelOption:last-child { border-bottom: none; }
+
+.modelOption:hover:not(:disabled) {
+  background: var(--hud-surface-hover);
+}
+
+.modelOption:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.modelOptionActive {
+  background: rgba(0, 255, 170, 0.06) !important;
+}
+
+.modelOptionName {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelOptionActive .modelOptionName {
+  color: var(--hud-accent);
+}
+
+.modelOptionMeta {
+  font-family: var(--hud-font-mono);
+  font-size: 0.62rem;
+  color: var(--hud-text-dim);
+  flex-shrink: 0;
+}
+
 .statusChip {
   font-size: var(--hud-font-size-xs);
   font-family: var(--hud-font-mono);
