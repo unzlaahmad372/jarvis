@@ -16,6 +16,7 @@ from app.tools.filesystem.access import FileAccessRegistry, PathNotAllowedError
 from app.tools.filesystem.tools import (
     FileMetadataTool,
     ListDirectoryTool,
+    OpenFileTool,
     ReadFileTool,
     SearchFilesTool,
 )
@@ -419,6 +420,128 @@ async def test_file_metadata(tmp_registry):
     meta = json.loads(result.output)
     assert meta["type"] == "file"
     assert meta["size_bytes"] == 4
+
+
+# ── OpenFileTool ────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_open_file_blocked_outside_root(tmp_registry):
+    far, _ = tmp_registry
+    tool = OpenFileTool(far)
+    result = await tool.execute({"path": "/etc/passwd"})
+    assert result.success is False
+    assert "denied" in (result.error or "").lower() or "outside" in (result.error or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_open_file_not_a_file(tmp_registry):
+    far, tmp_path = tmp_registry
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+    tool = OpenFileTool(far)
+    result = await tool.execute({"path": str(subdir)})  # directory, not file
+    assert result.success is False
+    assert "Not a file" in (result.error or "")
+
+
+@pytest.mark.asyncio
+async def test_open_file_glob_multiple_candidates(tmp_registry):
+    far, tmp_path = tmp_registry
+    (tmp_path / "report1.pdf").write_bytes(b"pdf1")
+    (tmp_path / "report2.pdf").write_bytes(b"pdf2")
+    tool = OpenFileTool(far)
+    result = await tool.execute({"path": str(tmp_path / "*.pdf")})
+    assert result.success is True
+    data = json.loads(result.output)
+    assert "candidates" in data
+    assert len(data["candidates"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_open_file_glob_no_match(tmp_registry):
+    far, tmp_path = tmp_registry
+    tool = OpenFileTool(far)
+    result = await tool.execute({"path": str(tmp_path / "*.xyz")})
+    assert result.success is False
+    assert "No files matched" in (result.error or "")
+
+
+@pytest.mark.asyncio
+async def test_open_file_glob_single_match_opens(tmp_registry, monkeypatch):
+    """Single glob match resolves to exact path and calls OS opener."""
+    far, tmp_path = tmp_registry
+    f = tmp_path / "only.txt"
+    f.write_text("content")
+
+    opened: list[str] = []
+
+    class FakeProc:
+        pass
+
+    def fake_popen(cmd: list[str], **_kwargs: object) -> FakeProc:  # noqa: ARG001
+        opened.append(cmd[-1])
+        return FakeProc()
+
+    import subprocess
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+
+    tool = OpenFileTool(far)
+    result = await tool.execute({"path": str(tmp_path / "*.txt")})
+    assert result.success is True
+    data = json.loads(result.output)
+    assert "opened" in data
+    assert len(opened) == 1
+
+
+@pytest.mark.asyncio
+async def test_open_file_exact_path_opens(tmp_registry, monkeypatch):
+    far, tmp_path = tmp_registry
+    f = tmp_path / "doc.txt"
+    f.write_text("hello")
+
+    opened: list[str] = []
+
+    class FakeProc:
+        pass
+
+    def fake_popen(cmd: list[str], **_kwargs: object) -> FakeProc:  # noqa: ARG001
+        opened.append(cmd[-1])
+        return FakeProc()
+
+    import subprocess
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+
+    tool = OpenFileTool(far)
+    result = await tool.execute({"path": str(f)})
+    assert result.success is True
+    assert len(opened) == 1
+
+
+@pytest.mark.asyncio
+async def test_open_file_os_error_reported(tmp_registry, monkeypatch):
+    far, tmp_path = tmp_registry
+    f = tmp_path / "doc.txt"
+    f.write_text("hello")
+
+    import subprocess
+    def bad_popen(*_args: object, **_kwargs: object) -> None:
+        raise OSError("no application")
+
+    monkeypatch.setattr(subprocess, "Popen", bad_popen)
+
+    tool = OpenFileTool(far)
+    result = await tool.execute({"path": str(f)})
+    assert result.success is False
+    assert "OS could not open" in (result.error or "")
+
+
+@pytest.mark.asyncio
+async def test_open_file_path_traversal_blocked(tmp_registry):
+    far, tmp_path = tmp_registry
+    tool = OpenFileTool(far)
+    result = await tool.execute({"path": str(tmp_path) + "/../../etc/passwd"})
+    assert result.success is False
 
 
 # ── System tools ──────────────────────────────────────────────────────────────

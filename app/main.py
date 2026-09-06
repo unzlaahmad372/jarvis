@@ -10,6 +10,7 @@ Startup sequence:
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -47,6 +48,7 @@ def _register_tools(settings: Settings) -> None:
     from app.tools.filesystem.tools import (
         FileMetadataTool,
         ListDirectoryTool,
+        OpenFileTool,
         ReadFileTool,
         SearchFilesTool,
     )
@@ -64,6 +66,7 @@ def _register_tools(settings: Settings) -> None:
     registry.register(ReadFileTool(far))
     registry.register(SearchFilesTool(far))
     registry.register(FileMetadataTool(far))
+    registry.register(OpenFileTool(far))
     registry.register(SystemInfoTool())
     registry.register(DiskUsageTool())
 
@@ -118,6 +121,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Configure logging FIRST so all subsequent calls are formatted correctly
     configure_logging(settings.log_level)
 
+    # OTel bootstrap (no-op if SDK not installed or no endpoint configured)
+    from app.core.telemetry import configure_telemetry
+    configure_telemetry(
+        service_name="jarvis",
+        otel_endpoint=getattr(settings, "otel_endpoint", None),
+    )
+
     # Secrets validation (logging is now configured)
     from app.core.secrets import validate_secrets
     validate_secrets(
@@ -161,12 +171,52 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.settings = settings
     app.state.orchestrator = orchestrator
 
+    # ── Inbox watcher (optional) ──────────────────────────────────────────────
+    watcher_task: asyncio.Task[None] | None = None
+    if settings.inbox_watcher_enabled:
+        from app.db.database import get_session_factory
+        from app.knowledge.embeddings import OllamaEmbeddingProvider
+        from app.knowledge.vector_store import ChromaVectorStore
+        from app.knowledge.watcher import run_inbox_watcher
+
+        _emb = OllamaEmbeddingProvider(
+            base_url=settings.ollama_url,
+            model=settings.embedding_model,
+        )
+        _vs = ChromaVectorStore(
+            persist_dir=settings.indexes_dir,
+            embedding_model=settings.embedding_model,
+            index_version=settings.index_version,
+        )
+        watcher_task = asyncio.create_task(
+            run_inbox_watcher(
+                inbox_dir=settings.data_dir / "inbox",
+                embedding_provider=_emb,
+                vector_store=_vs,
+                session_factory=get_session_factory(),
+                chunk_size_tokens=settings.chunk_size,
+                overlap_tokens=settings.chunk_overlap,
+            ),
+            name="inbox_watcher",
+        )
+        logger.info("inbox_watcher_enabled", inbox=str(settings.data_dir / "inbox"))
+
     logger.info("jarvis_ready", host=settings.host, port=settings.port)
 
     yield
 
+    if watcher_task:
+        watcher_task.cancel()
+        try:
+            await watcher_task
+        except asyncio.CancelledError:
+            pass
+
     logger.info("jarvis_shutting_down")
     await close_db()
+
+    from app.core.telemetry import shutdown_telemetry
+    shutdown_telemetry()
 
 
 def create_app() -> FastAPI:

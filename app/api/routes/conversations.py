@@ -42,7 +42,10 @@ async def rename_conversation(
     )
     conv = result.scalar_one_or_none()
     if conv is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Conversation {conversation_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Conversation {conversation_id} not found",
+        )
     conv.title = body.title
     await session.commit()
     return ConversationOut.model_validate(conv)

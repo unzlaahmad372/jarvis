@@ -17,6 +17,7 @@ from app.brain.intent_router import Intent
 from app.brain.planner import AgentPlanner, PlanResult
 from app.core.config import Settings
 from app.core.logging import get_logger
+from app.core.telemetry import span
 from app.db.models import Conversation, ConversationSummary, Message, Workspace
 from app.inference.manager import InferenceManager
 from app.knowledge.embeddings import EmbeddingProvider
@@ -122,136 +123,141 @@ class ChatOrchestrator:
 
         Returns (user_msg, assistant_msg, compacted, rag_result, plan_result).
         """
-        conversation = await self._get_or_create_conversation(session, conversation_id)
-        messages, summaries = await self._load_history(session, conversation)
-
-        # ── Compaction ────────────────────────────────────────────────────────
-        compacted = False
-        to_compact = select_messages_to_compact(
-            messages, history_token_budget=self._settings.recent_history_tokens
-        )
-        if to_compact:
-            summary = await compact_conversation(conversation, to_compact, self._llm)
-            session.add(summary)
-            summaries.append(summary)
-            compacted = True
+        with span(
+            "orchestrator.chat",
+            {
+                "conversation_id": conversation_id or 0,
+                "message_length": len(user_message),
+            },
+        ):
+            conversation = await self._get_or_create_conversation(session, conversation_id)
             messages, summaries = await self._load_history(session, conversation)
 
-        # ── Remember command detection ─────────────────────────────────────────
-        import re
-        _remember_re = re.compile(
-            r"^remember(?:\s+that|:)?\s+(.+)$", re.IGNORECASE | re.DOTALL
-        )
-        _m = _remember_re.match(user_message.strip())
-        if _m:
-            await remember(
-                session,
-                content=_m.group(1).strip(),
-                source=f"conversation:{conversation.id}",
+            # ── Compaction ────────────────────────────────────────────────────
+            compacted = False
+            to_compact = select_messages_to_compact(
+                messages, history_token_budget=self._settings.recent_history_tokens
             )
+            if to_compact:
+                summary = await compact_conversation(conversation, to_compact, self._llm)
+                session.add(summary)
+                summaries.append(summary)
+                compacted = True
+                messages, summaries = await self._load_history(session, conversation)
+
+            # ── Remember command detection ────────────────────────────────────
+            import re
+            _remember_re = re.compile(
+                r"^remember(?:\s+that|:)?\s+(.+)$", re.IGNORECASE | re.DOTALL
+            )
+            _m = _remember_re.match(user_message.strip())
+            if _m:
+                await remember(
+                    session,
+                    content=_m.group(1).strip(),
+                    source=f"conversation:{conversation.id}",
+                )
+                await session.flush()
+
+            # ── Agent planning (intent routing + tool execution) ───────────────
+            plan_result: PlanResult | None = None
+            if self._planner:
+                plan_result = await self._planner.plan(user_message, session)
+
+            # ── RAG retrieval (skip if planner already handled via tool) ───────
+            rag_result: RetrievalResult | None = None
+            do_rag: bool = bool(self._embedding_provider and self._vector_store)
+            if do_rag and plan_result:
+                do_rag = plan_result.intent in (
+                    Intent.KNOWLEDGE_SEARCH,
+                    Intent.GENERAL_CHAT,
+                    Intent.MEMORY_SEARCH,
+                )
+            if do_rag:
+                rag_result = await retrieve(
+                    query=user_message,
+                    embedding_provider=self._embedding_provider,  # type: ignore[arg-type]
+                    vector_store=self._vector_store,  # type: ignore[arg-type]
+                    top_k=self._settings.retrieval_top_k,
+                    score_threshold=self._settings.retrieval_score_threshold,
+                    rag_token_budget=self._settings.rag_context_tokens,
+                )
+
+            # ── Memory retrieval ──────────────────────────────────────────────
+            memories = await search_memories(session, user_message, limit=8)
+            memory_slot = build_memory_context_slot(
+                memories, token_budget=self._settings.memory_context_tokens
+            )
+
+            # ── Build context ─────────────────────────────────────────────────
+            history_slots = build_history_slots(
+                messages, summaries, self._settings.recent_history_tokens
+            )
+            extra_slots = list(history_slots)
+            if plan_result:
+                extra_slots.extend(plan_result.tool_context_slots)
+            if rag_result and rag_result.context_slot:
+                extra_slots.append(rag_result.context_slot)
+            if memory_slot:
+                extra_slots.append(memory_slot)
+
+            built = self._context_builder.build(
+                user_message=user_message,
+                extra_slots=extra_slots,
+            )
+
+            # ── Persist user message ──────────────────────────────────────────
+            user_seq = await self._next_sequence(session, conversation.id)
+            user_msg = Message(
+                conversation_id=conversation.id,
+                role="user",
+                content=user_message,
+                sequence=user_seq,
+                context_tokens=built.total_tokens,
+            )
+            session.add(user_msg)
             await session.flush()
 
-        # ── Agent planning (intent routing + tool execution) ──────────────────
-        plan_result: PlanResult | None = None
-        if self._planner:
-            plan_result = await self._planner.plan(user_message, session)
-
-        # ── RAG retrieval (skip if planner already handled via tool) ──────────
-        rag_result: RetrievalResult | None = None
-        do_rag: bool = bool(self._embedding_provider and self._vector_store)
-        if do_rag and plan_result:
-            # Only run RAG for knowledge/general intents
-            do_rag = plan_result.intent in (
-                Intent.KNOWLEDGE_SEARCH,
-                Intent.GENERAL_CHAT,
-                Intent.MEMORY_SEARCH,
-            )
-        if do_rag:
-            rag_result = await retrieve(
-                query=user_message,
-                embedding_provider=self._embedding_provider,  # type: ignore[arg-type]
-                vector_store=self._vector_store,  # type: ignore[arg-type]
-                top_k=self._settings.retrieval_top_k,
-                score_threshold=self._settings.retrieval_score_threshold,
-                rag_token_budget=self._settings.rag_context_tokens,
+            # ── LLM call ──────────────────────────────────────────────────────
+            llm_response = await self._inference_manager.run(
+                lambda: self._llm.complete(built.user_message, system=built.system_prompt),
             )
 
-        # ── Memory retrieval ──────────────────────────────────────────────────
-        memories = await search_memories(session, user_message, limit=8)
-        memory_slot = build_memory_context_slot(
-            memories, token_budget=self._settings.memory_context_tokens
-        )
+            # ── Persist assistant message ─────────────────────────────────────
+            asst_seq = user_seq + 1
+            asst_msg = Message(
+                conversation_id=conversation.id,
+                role="assistant",
+                content=llm_response.content,
+                sequence=asst_seq,
+                input_tokens=llm_response.input_tokens,
+                output_tokens=llm_response.output_tokens,
+                context_tokens=built.total_tokens,
+                model=llm_response.model,
+                provider=llm_response.provider,
+                finish_reason=llm_response.finish_reason,
+            )
+            session.add(asst_msg)
 
-        # ── Build context ─────────────────────────────────────────────────────
-        history_slots = build_history_slots(
-            messages, summaries, self._settings.recent_history_tokens
-        )
-        extra_slots = list(history_slots)
-        # Tool results (priority 3) go in before RAG (priority 4)
-        if plan_result:
-            extra_slots.extend(plan_result.tool_context_slots)
-        if rag_result and rag_result.context_slot:
-            extra_slots.append(rag_result.context_slot)
-        if memory_slot:
-            extra_slots.append(memory_slot)
+            conversation.total_input_tokens += llm_response.input_tokens or 0
+            conversation.total_output_tokens += llm_response.output_tokens or 0
+            if conversation.title is None:
+                conversation.title = user_message[:120]
 
-        built = self._context_builder.build(
-            user_message=user_message,
-            extra_slots=extra_slots,
-        )
+            await session.commit()
+            await session.refresh(user_msg)
+            await session.refresh(asst_msg)
 
-        # ── Persist user message ──────────────────────────────────────────────
-        user_seq = await self._next_sequence(session, conversation.id)
-        user_msg = Message(
-            conversation_id=conversation.id,
-            role="user",
-            content=user_message,
-            sequence=user_seq,
-            context_tokens=built.total_tokens,
-        )
-        session.add(user_msg)
-        await session.flush()
+            logger.info(
+                "chat_turn_complete",
+                conversation_id=conversation.id,
+                rag_chunks=len(rag_result.chunks) if rag_result else 0,
+                compacted=compacted,
+                intent=plan_result.intent if plan_result else None,
+                plan_steps=len(plan_result.steps) if plan_result else 0,
+            )
 
-        # ── LLM call ──────────────────────────────────────────────────────────
-        llm_response = await self._inference_manager.run(
-            lambda: self._llm.complete(built.user_message, system=built.system_prompt),
-        )
-
-        # ── Persist assistant message ─────────────────────────────────────────
-        asst_seq = user_seq + 1
-        asst_msg = Message(
-            conversation_id=conversation.id,
-            role="assistant",
-            content=llm_response.content,
-            sequence=asst_seq,
-            input_tokens=llm_response.input_tokens,
-            output_tokens=llm_response.output_tokens,
-            context_tokens=built.total_tokens,
-            model=llm_response.model,
-            provider=llm_response.provider,
-            finish_reason=llm_response.finish_reason,
-        )
-        session.add(asst_msg)
-
-        conversation.total_input_tokens += llm_response.input_tokens or 0
-        conversation.total_output_tokens += llm_response.output_tokens or 0
-        if conversation.title is None:
-            conversation.title = user_message[:120]
-
-        await session.commit()
-        await session.refresh(user_msg)
-        await session.refresh(asst_msg)
-
-        logger.info(
-            "chat_turn_complete",
-            conversation_id=conversation.id,
-            rag_chunks=len(rag_result.chunks) if rag_result else 0,
-            compacted=compacted,
-            intent=plan_result.intent if plan_result else None,
-            plan_steps=len(plan_result.steps) if plan_result else 0,
-        )
-
-        return user_msg, asst_msg, compacted, rag_result, plan_result
+            return user_msg, asst_msg, compacted, rag_result, plan_result
 
     async def stream_chat(
         self,
