@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
+import { JarvisCore } from '@/components/hud/JarvisCore'
+import type { CoreState } from '@/components/hud/JarvisCore'
 import { chatApi, conversationsApi, toolsApi, visionApi, voiceApi } from '@/services/api/client'
 import { useChatStore } from '@/app/stores/chatStore'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
@@ -318,7 +320,7 @@ export function ChatPage() {
   } = useChatStore()
 
   const [input, setInput] = useState('')
-  const [visionResult, setVisionResult] = useState<string | null>(null)
+  const [_visionResult, setVisionResult] = useState<string | null>(null)
   const [visionLoading, setVisionLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -419,7 +421,7 @@ export function ChatPage() {
         break
       }
       case 'RESPONSE_COMPLETE': {
-        const p = event.payload as ResponseCompletePayload
+        const p = event.payload as unknown as ResponseCompletePayload
         onComplete(p.conversation_id)
         if (p.citations?.length) setLastCitations(p.citations)
         setLastTokenUsage({
@@ -524,7 +526,7 @@ export function ChatPage() {
       <div className={styles.messages} role="log" aria-live="polite" aria-label="Conversation">
         {messages.length === 0 && !isStreaming && (
           <div className={styles.empty}>
-            <div className={styles.emptyTitle}>JARVIS</div>
+            <JarvisCore state={jarvisState as CoreState} size={200} />
             <div className={styles.emptySubtitle}>How can I assist you?</div>
           </div>
         )}

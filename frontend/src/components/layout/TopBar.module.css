@@ -14,6 +14,7 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
+  min-width: 120px;
 }
 
 .brandName {
@@ -34,7 +35,17 @@
 .center {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.modelChip {
+  font-size: var(--hud-font-size-xs);
+  font-family: var(--hud-font-mono);
+  color: var(--hud-text-secondary);
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
 }
 
 .statusChip {
@@ -46,35 +57,37 @@
   letter-spacing: 0.08em;
 }
 
-.status_ready {
-  color: var(--hud-success);
-  border-color: var(--hud-success);
-}
-
-.status_unhealthy {
-  color: var(--hud-danger);
-  border-color: var(--hud-danger);
-}
-
-.status_degraded {
-  color: var(--hud-warning);
-  border-color: var(--hud-warning);
-}
+.status_ready    { color: var(--hud-success); }
+.status_unhealthy { color: var(--hud-danger); }
+.status_degraded  { color: var(--hud-warning); }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  min-width: 120px;
+  justify-content: flex-end;
+}
+
+.clock {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-sm);
+  color: var(--hud-text-secondary);
+  letter-spacing: 0.08em;
+  min-width: 72px;
+  text-align: right;
 }
 
 .modeToggle {
   background: none;
   border: 1px solid var(--hud-line);
   color: var(--hud-text-secondary);
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: var(--hud-radius);
   cursor: pointer;
-  font-size: var(--hud-font-size-base);
+  font-size: var(--hud-font-size-xs);
+  font-family: var(--hud-font-mono);
+  letter-spacing: 0.06em;
   transition: color var(--hud-motion-fast), border-color var(--hud-motion-fast);
 }
 

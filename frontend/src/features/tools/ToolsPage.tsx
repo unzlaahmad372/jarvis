@@ -18,7 +18,7 @@ export function ToolsPage() {
   const [result, setResult] = useState<ToolExecuteResponse | null>(null)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pendingConfirm, setPendingConfirm] = useState<ConfirmationOut | null>(null)
+  const [_pendingConfirm, setPendingConfirm] = useState<ConfirmationOut | null>(null)
 
   useEffect(() => {
     toolsApi.list().then(setTools).catch(() => setError('Failed to load tools'))

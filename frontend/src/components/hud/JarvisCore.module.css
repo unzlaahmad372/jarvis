@@ -1,0 +1,132 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.svg {
+  display: block;
+  overflow: visible;
+}
+
+/* ── Ring base ─────────────────────────────────────────────────────────────── */
+
+.ring {
+  transform-box: fill-box;
+}
+
+/* ── Rotations ─────────────────────────────────────────────────────────────── */
+
+.rotating {
+  animation: rotateCW 12s linear infinite;
+}
+
+.counterRotating {
+  animation: rotateCCW 8s linear infinite;
+}
+
+.rotatingFast {
+  animation: rotateCW 4s linear infinite;
+}
+
+@keyframes rotateCW {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes rotateCCW {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+/* ── Core pulse ────────────────────────────────────────────────────────────── */
+
+.corePulse {
+  animation: corePulse 2s ease-in-out infinite;
+}
+
+@keyframes corePulse {
+  0%, 100% { fill-opacity: 0.15; }
+  50%       { fill-opacity: 0.35; }
+}
+
+/* ── Thinking sweep ────────────────────────────────────────────────────────── */
+
+.thinkingSweep {
+  animation: rotateCW 1.4s linear infinite;
+}
+
+/* ── Listening pulse rings ─────────────────────────────────────────────────── */
+
+.pulseRing1 {
+  animation: pulseOut 2s ease-out infinite;
+}
+
+.pulseRing2 {
+  animation: pulseOut 2s ease-out infinite 0.6s;
+}
+
+@keyframes pulseOut {
+  0%   { r: 0; opacity: 0.5; }
+  100% { r: 60px; opacity: 0; }
+}
+
+/* ── Speaking bars ─────────────────────────────────────────────────────────── */
+
+.bar0 { animation: speakBar 0.6s ease-in-out infinite 0.0s; }
+.bar1 { animation: speakBar 0.6s ease-in-out infinite 0.1s; }
+.bar2 { animation: speakBar 0.6s ease-in-out infinite 0.2s; }
+.bar3 { animation: speakBar 0.6s ease-in-out infinite 0.1s; }
+.bar4 { animation: speakBar 0.6s ease-in-out infinite 0.0s; }
+
+@keyframes speakBar {
+  0%, 100% { transform: scaleY(0.4); }
+  50%       { transform: scaleY(1.4); }
+}
+
+/* ── State label ───────────────────────────────────────────────────────────── */
+
+.label {
+  margin-top: 10px;
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+/* ── Error flash ───────────────────────────────────────────────────────────── */
+
+.state_ERROR .svg {
+  animation: errorFlash 1s ease-in-out infinite;
+}
+
+@keyframes errorFlash {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ── Offline dim ───────────────────────────────────────────────────────────── */
+
+.state_OFFLINE .svg {
+  opacity: 0.35;
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .rotating,
+  .counterRotating,
+  .rotatingFast,
+  .corePulse,
+  .thinkingSweep,
+  .pulseRing1,
+  .pulseRing2,
+  .bar0, .bar1, .bar2, .bar3, .bar4,
+  .state_ERROR .svg {
+    animation: none;
+  }
+}
