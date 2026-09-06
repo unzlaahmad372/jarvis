@@ -3,7 +3,7 @@
 A private, local-first AI assistant inspired by JARVIS from Iron Man.
 Runs entirely on your machine. No cloud account required.
 
-**Current status: Phase 31 — Conversation Intelligence complete.**
+**Current status: Phase 33 — Conversation Pinning complete.**
 
 - ✅ Phase 0 — FastAPI backend, SQLite, Ollama, health endpoints
 - ✅ Phase 1 — Persistent chat, streaming (SSE), context budgeting, React/Vite frontend
@@ -32,6 +32,8 @@ Runs entirely on your machine. No cloud account required.
 - ✅ Phase 29 — Conversation Intelligence — auto-title, on-demand summary + panel
 - ✅ Phase 30 — Topic Tags — LLM tag generation, persistence, tag chips in sidebar
 - ✅ Phase 31 — Auto-tag on first turn, tag button in header, tag filter bar in sidebar
+- ✅ Phase 32 — Model Switcher — runtime model selection per conversation
+- ✅ Phase 33 — Conversation Pinning — toggle pin, pinned-first ordering, pin button in header
 
 ---
 
@@ -323,3 +325,4 @@ See [docs/security.md](docs/security.md) for full details.
 | 30 | Topic Tags — LLM tag generation, persistence, tag chips in sidebar | ✅ Done |
 | 31 | Auto-tag on first turn, tag button in header, tag filter bar in sidebar | ✅ Done |
 | 32 | Model Switcher — runtime model selection per conversation | ✅ Done |
+| 33 | Conversation Pinning — toggle pin, pinned-first ordering, pin button in header | ✅ Done |
