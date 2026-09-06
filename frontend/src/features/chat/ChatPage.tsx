@@ -7,6 +7,7 @@ import { chatApi, conversationsApi, toolsApi, visionApi, voiceApi } from '@/serv
 import { useChatStore } from '@/app/stores/chatStore'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
+import { useWakeWord } from '@/hooks/useWakeWord'
 import type {
   CitationOut,
   ConfirmationOut,
@@ -317,6 +318,8 @@ export function ChatPage() {
     setLastPlanSteps,
     setLastCitations,
     setLastTokenUsage,
+    wakeWordEnabled,
+    toggleWakeWord,
   } = useChatStore()
 
   const [input, setInput] = useState('')
@@ -338,6 +341,14 @@ export function ChatPage() {
 
   const voiceEnabled = voiceSettings?.enabled ?? false
   const autoSpeak = voiceSettings?.auto_speak ?? false
+
+  const handleWake = useCallback(() => {
+    if (isStreaming) return
+    setJarvisState('LISTENING')
+    stt.start()
+  }, [isStreaming, setJarvisState, stt])
+
+  useWakeWord(handleWake, voiceEnabled && wakeWordEnabled)
 
   // Max context tokens from env or sensible default
   const maxContextTokens = parseInt(import.meta.env.VITE_MAX_CONTEXT_TOKENS ?? '8192', 10)
@@ -526,7 +537,11 @@ export function ChatPage() {
       <div className={styles.messages} role="log" aria-live="polite" aria-label="Conversation">
         {messages.length === 0 && !isStreaming && (
           <div className={styles.empty}>
-            <JarvisCore state={jarvisState as CoreState} size={200} />
+            <JarvisCore state={({
+              IDLE: 'IDLE', LISTENING: 'LISTENING', THINKING: 'THINKING',
+              USING_TOOL: 'THINKING', WAITING_FOR_APPROVAL: 'THINKING',
+              ERROR: 'ERROR', OFFLINE: 'OFFLINE',
+            }[jarvisState] ?? 'IDLE') as CoreState} size={200} />
             <div className={styles.emptySubtitle}>How can I assist you?</div>
           </div>
         )}
@@ -567,15 +582,26 @@ export function ChatPage() {
       <div className={styles.inputArea}>
         <div className={styles.inputRow}>
           {voiceEnabled && stt.supported && (
-            <button
-              className={`${styles.micBtn} ${stt.listening ? styles.micActive : ''}`}
-              onClick={stt.listening ? stt.stop : stt.start}
-              disabled={isStreaming}
-              aria-label={stt.listening ? 'Stop recording' : 'Start voice input'}
-              title={stt.listening ? 'Stop recording' : 'Push to talk'}
-            >
-              {stt.listening ? '⏹' : '🎤'}
-            </button>
+            <>
+              <button
+                className={`${styles.micBtn} ${stt.listening ? styles.micActive : ''}`}
+                onClick={stt.listening ? stt.stop : stt.start}
+                disabled={isStreaming}
+                aria-label={stt.listening ? 'Stop recording' : 'Start voice input'}
+                title={stt.listening ? 'Stop recording' : 'Push to talk'}
+              >
+                {stt.listening ? '⏹' : '🎤'}
+              </button>
+              <button
+                className={`${styles.wakeBtn} ${wakeWordEnabled ? styles.wakeActive : ''}`}
+                onClick={toggleWakeWord}
+                title={wakeWordEnabled ? 'Wake word active — say "Hey JARVIS"' : 'Enable wake word'}
+                aria-label={wakeWordEnabled ? 'Disable wake word' : 'Enable wake word'}
+                aria-pressed={wakeWordEnabled}
+              >
+                {wakeWordEnabled ? '👂' : '🔇'}
+              </button>
+            </>
           )}
           <input
             ref={fileInputRef}

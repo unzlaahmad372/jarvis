@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-type SpeechRecognitionInstance = {
+export type SpeechRecognitionInstance = {
   continuous: boolean
   interimResults: boolean
   lang: string

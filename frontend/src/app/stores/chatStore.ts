@@ -8,6 +8,7 @@ import type { CitationOut, ConfirmationOut, PlanStep } from '@/types/api'
 
 export type JarvisState =
   | 'IDLE'
+  | 'LISTENING'
   | 'THINKING'
   | 'USING_TOOL'
   | 'WAITING_FOR_APPROVAL'
@@ -31,6 +32,7 @@ interface ChatStore {
   lastIntent: string | null
   lastCitations: CitationOut[]
   lastTokenUsage: TokenUsageSummary | null
+  wakeWordEnabled: boolean
 
   setActiveConversation: (id: number | null) => void
   startStreaming: () => void
@@ -43,6 +45,7 @@ interface ChatStore {
   setLastPlanSteps: (steps: PlanStep[], intent: string) => void
   setLastCitations: (citations: CitationOut[]) => void
   setLastTokenUsage: (usage: TokenUsageSummary) => void
+  toggleWakeWord: () => void
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
@@ -56,6 +59,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   lastIntent: null,
   lastCitations: [],
   lastTokenUsage: null,
+  wakeWordEnabled: false,
 
   setActiveConversation: (id) => set({ activeConversationId: id }),
 
@@ -102,4 +106,5 @@ export const useChatStore = create<ChatStore>((set) => ({
   setLastCitations: (citations) => set({ lastCitations: citations }),
 
   setLastTokenUsage: (usage) => set({ lastTokenUsage: usage }),
+  toggleWakeWord: () => set((s) => ({ wakeWordEnabled: !s.wakeWordEnabled })),
 }))

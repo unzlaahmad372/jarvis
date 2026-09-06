@@ -28,7 +28,11 @@ export function TopBar() {
   return (
     <header className={styles.topBar} role="banner">
       <div className={styles.brand}>
-        <JarvisCore state={jarvisState as CoreState} size={36} />
+        <JarvisCore state={({
+          IDLE: 'IDLE', LISTENING: 'LISTENING', THINKING: 'THINKING',
+          USING_TOOL: 'THINKING', WAITING_FOR_APPROVAL: 'THINKING',
+          ERROR: 'ERROR', OFFLINE: 'OFFLINE',
+        }[jarvisState] ?? 'IDLE') as CoreState} size={36} />
         <span className={styles.brandName}>JARVIS</span>
         <span className={styles.brandVersion}>v0.1</span>
       </div>
