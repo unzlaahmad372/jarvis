@@ -3,7 +3,7 @@
 A private, local-first AI assistant inspired by JARVIS from Iron Man.
 Runs entirely on your machine. No cloud account required.
 
-**Current status: Phase 12 — Production Hardening complete**
+**Current status: Phase 28 — Plugins complete. Gap fixes applied.**
 
 - ✅ Phase 0 — FastAPI backend, SQLite, Ollama, health endpoints
 - ✅ Phase 1 — Persistent chat, streaming (SSE), context budgeting, React/Vite frontend
@@ -18,6 +18,17 @@ Runs entirely on your machine. No cloud account required.
 - ✅ Phase 10 — Backup & Recovery Hardening (BackupManager, RestoreDrill, integrity checks)
 - ✅ Phase 11 — Remote/Mobile Auth (JWT, device registry, scoped authorization, rate limiting)
 - ✅ Phase 12 — Production Hardening (audit log API, data retention enforcement, secrets validation, privacy docs)
+- ✅ Phase 13 — MCP (Model Context Protocol adapter, server registry)
+- ✅ Phase 14 — Vision (image analysis, llava model routing)
+- ✅ Phase 20 — OpenTelemetry spans (ToolExecutor, RAG, OllamaProvider, InferenceManager)
+- ✅ Phase 21 — HUD Visual Overhaul (JarvisCore SVG orb, TopBar, live clock, model chip)
+- ✅ Phase 22 — Wake Word (continuous browser STT, "Hey JARVIS", mic conflict fix)
+- ✅ Phase 23 — Conversation Search & Smart Sidebar (debounced search, date groups)
+- ✅ Phase 24 — Settings API (DB-persisted runtime overrides, safe pydantic-settings)
+- ✅ Phase 25 — Conversation Export (markdown/json/txt, export-all with eager load)
+- ✅ Phase 26 — Workspaces (CRUD, cascade guard, conversation count)
+- ✅ Phase 27 — Notifications (browser Notification API, automation polling)
+- ✅ Phase 28 — Plugins (drop-in tools, JARVIS_ENABLE_PLUGINS flag, 403 when disabled)
 
 ---
 
@@ -298,3 +309,11 @@ See [docs/security.md](docs/security.md) for full details.
 | 10 | Backup & Recovery — BackupManager, RestoreDrill, integrity checks | ✅ Done |
 | 11 | Remote/Mobile Auth — JWT, device registry, scoped authorization, rate limiting | ✅ Done |
 | 12 | Production Hardening — audit log, retention enforcement, secrets validation | ✅ Done |
+| 13 | MCP — Model Context Protocol adapter | ✅ Done |
+| 14 | Vision — image analysis, llava routing | ✅ Done |
+| 20 | OpenTelemetry — distributed tracing spans | ✅ Done |
+| 21 | HUD Visual Overhaul — JarvisCore orb, TopBar, live clock | ✅ Done |
+| 22 | Wake Word — continuous browser STT, "Hey JARVIS" | ✅ Done |
+| 23 | Conversation Search & Smart Sidebar | ✅ Done |
+| 24–28 | Settings / Export / Workspaces / Notifications / Plugins | ✅ Done |
+| 29 | Conversation Intelligence — auto-title, on-demand summary, topic tags | 🔄 Next |

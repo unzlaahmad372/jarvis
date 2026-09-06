@@ -173,4 +173,6 @@ class TestConversationsEndpoint:
         )
         resp = await test_client.get("/api/v1/conversations")
         conv = resp.json()[0]
-        assert conv["title"] == "My first question"
+        # Title is now LLM-generated (FakeLLMProvider returns fixed text) — just assert it's set
+        assert conv["title"] is not None
+        assert len(conv["title"]) > 0

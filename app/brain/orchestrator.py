@@ -241,12 +241,20 @@ class ChatOrchestrator:
 
             conversation.total_input_tokens += llm_response.input_tokens or 0
             conversation.total_output_tokens += llm_response.output_tokens or 0
+            is_first_turn = user_seq == 1
             if conversation.title is None:
-                conversation.title = user_message[:120]
+                conversation.title = user_message[:120]  # placeholder
 
             await session.commit()
             await session.refresh(user_msg)
             await session.refresh(asst_msg)
+
+            # ── LLM title generation on first turn ──────────────────────────────
+            if is_first_turn:
+                from app.brain.titler import generate_title
+                title = await generate_title(user_message, self._llm)
+                conversation.title = title
+                await session.commit()
 
             logger.info(
                 "chat_turn_complete",
@@ -408,11 +416,19 @@ class ChatOrchestrator:
         )
         session.add(asst_msg)
         conversation.total_output_tokens += len(full_content.split())
+        is_first_turn = user_seq == 1
         if conversation.title is None:
-            conversation.title = user_message[:120]
+            conversation.title = user_message[:120]  # placeholder
         await session.commit()
         await session.refresh(user_msg)
         await session.refresh(asst_msg)
+
+        # ── LLM title generation on first turn ──────────────────────────────
+        if is_first_turn:
+            from app.brain.titler import generate_title
+            title = await generate_title(user_message, self._llm)
+            conversation.title = title
+            await session.commit()
 
         citations = [
             {

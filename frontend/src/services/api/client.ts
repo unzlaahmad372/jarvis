@@ -76,6 +76,8 @@ export const conversationsApi = {
       method: 'PATCH',
       body: JSON.stringify({ title }),
     }),
+  summarize: (id: number) =>
+    request<import('@/types/api').SummaryOut>(`/api/v1/conversations/${id}/summarize`, { method: 'POST' }),
 }
 
 // ── Documents ────────────────────────────────────────────────────────────────

@@ -340,12 +340,17 @@ export function ChatPage() {
   })
 
   const voiceEnabled = voiceSettings?.enabled ?? false
+  const voiceAutoSpeak = voiceSettings?.auto_speak ?? true
+
+  // Stable ref so handleWake doesn't re-create on every stt object change (M5)
+  const sttStartRef = useRef(stt.start)
+  useEffect(() => { sttStartRef.current = stt.start }, [stt.start])
 
   const handleWake = useCallback(() => {
     if (isStreaming) return
     setJarvisState('LISTENING')
-    stt.start()
-  }, [isStreaming, setJarvisState, stt])
+    sttStartRef.current()
+  }, [isStreaming, setJarvisState])
 
   useWakeWord(handleWake, voiceEnabled && wakeWordEnabled, stt.listening)
 
@@ -482,7 +487,7 @@ export function ChatPage() {
               .catch(() => { /* confirmation may have expired */ })
           }
         }
-        if (voiceEnabled && tts.supported) tts.speak(p.content)
+        if (voiceEnabled && voiceAutoSpeak && tts.supported) tts.speak(p.content)
         break
       }
       case 'ERROR': {

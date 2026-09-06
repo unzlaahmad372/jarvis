@@ -232,6 +232,13 @@ export interface SettingsOut {
   log_level: string
 }
 
+export interface SummaryOut {
+  conversation_id: number
+  title: string | null
+  message_count: number
+  summary: string
+}
+
 export interface VoiceSettingsOut {
   enabled: boolean
   auto_speak: boolean
