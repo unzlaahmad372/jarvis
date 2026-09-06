@@ -192,6 +192,7 @@ function ConversationPanel() {
   const { activeConversationId, setActiveConversation } = useChatStore()
   const [query, setQuery] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -214,7 +215,11 @@ function ConversationPanel() {
   })
 
   const convs = debouncedQ ? (searchResults ?? []) : allConvs
-  const groups = groupConversations(convs)
+  const filteredConvs = activeTag ? convs.filter((c) => c.tags.includes(activeTag)) : convs
+  const groups = groupConversations(filteredConvs)
+
+  // Collect all unique tags across all conversations for the filter bar
+  const allTags = Array.from(new Set(allConvs.flatMap((c) => c.tags))).sort()
 
   const handleSelect = (id: number) => {
     setActiveConversation(id)
@@ -243,6 +248,21 @@ function ConversationPanel() {
         )}
       </div>
 
+      {allTags.length > 0 && (
+        <div className={styles.tagFilter} aria-label="Filter by tag">
+          {allTags.map((t) => (
+            <button
+              key={t}
+              className={`${styles.tagFilterChip} ${activeTag === t ? styles.tagFilterActive : ''}`}
+              onClick={() => setActiveTag(activeTag === t ? null : t)}
+              aria-pressed={activeTag === t}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className={styles.convList}>
         {groups.length === 0 && (
           <div className={styles.convEmpty}>
@@ -265,7 +285,15 @@ function ConversationPanel() {
                 {c.tags.length > 0 && (
                   <span className={styles.tagRow}>
                     {c.tags.map((t) => (
-                      <span key={t} className={styles.tagChip}>{t}</span>
+                      <span
+                        key={t}
+                        className={`${styles.tagChip} ${activeTag === t ? styles.tagChipActive : ''}`}
+                        onClick={(e) => { e.stopPropagation(); setActiveTag(activeTag === t ? null : t) }}
+                        role="button"
+                        aria-pressed={activeTag === t}
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && setActiveTag(activeTag === t ? null : t)}
+                      >{t}</span>
                     ))}
                   </span>
                 )}

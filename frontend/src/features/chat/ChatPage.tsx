@@ -416,6 +416,11 @@ export function ChatPage() {
     onSuccess: (data) => setSummaryPanel(data.summary),
   })
 
+  const tagMutation = useMutation({
+    mutationFn: () => conversationsApi.tag(activeConversationId!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+  })
+
   const handleRename = async (newTitle: string) => {
     if (!activeConversationId) return
     try {
@@ -578,6 +583,15 @@ export function ChatPage() {
                 aria-label="Summarize conversation"
               >
                 {summarizeMutation.isPending ? '⏳' : '∑'}
+              </button>
+              <button
+                className={styles.summarizeBtn}
+                onClick={() => tagMutation.mutate()}
+                disabled={tagMutation.isPending || isStreaming}
+                title="Generate topic tags"
+                aria-label="Generate topic tags"
+              >
+                {tagMutation.isPending ? '⏳' : '🏷'}
               </button>
               <ContextBar
                 contextTokens={lastTokenUsage?.context ?? null}

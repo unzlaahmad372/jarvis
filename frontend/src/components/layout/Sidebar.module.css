@@ -174,6 +174,53 @@
   border-radius: 3px;
   padding: 0 4px;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--hud-motion-fast), border-color var(--hud-motion-fast);
+}
+
+.tagChip:hover {
+  background: rgba(0, 255, 170, 0.12);
+  border-color: var(--hud-accent-muted);
+}
+
+.tagChipActive {
+  background: rgba(0, 255, 170, 0.18) !important;
+  border-color: var(--hud-accent) !important;
+  color: var(--hud-accent) !important;
+}
+
+.tagFilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hud-line);
+  flex-shrink: 0;
+}
+
+.tagFilterChip {
+  font-family: var(--hud-font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: var(--hud-text-dim);
+  background: none;
+  border: 1px solid var(--hud-line);
+  border-radius: 3px;
+  padding: 1px 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--hud-motion-fast), border-color var(--hud-motion-fast), background var(--hud-motion-fast);
+}
+
+.tagFilterChip:hover {
+  color: var(--hud-accent-muted);
+  border-color: var(--hud-accent-muted);
+}
+
+.tagFilterActive {
+  color: var(--hud-accent) !important;
+  border-color: var(--hud-accent) !important;
+  background: rgba(0, 255, 170, 0.08) !important;
 }
 
 .convEmpty {

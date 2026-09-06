@@ -251,9 +251,14 @@ class ChatOrchestrator:
 
             # ── LLM title generation on first turn ──────────────────────────────
             if is_first_turn:
+                from app.brain.tagger import generate_tags
                 from app.brain.titler import generate_title
                 title = await generate_title(user_message, self._llm)
                 conversation.title = title
+                transcript = f"user: {user_message}\nassistant: {llm_response.content}"
+                tags = await generate_tags(transcript, self._llm)
+                if tags:
+                    conversation.tags = ", ".join(tags)
                 await session.commit()
 
             logger.info(
@@ -425,9 +430,14 @@ class ChatOrchestrator:
 
         # ── LLM title generation on first turn ──────────────────────────────
         if is_first_turn:
+            from app.brain.tagger import generate_tags
             from app.brain.titler import generate_title
             title = await generate_title(user_message, self._llm)
             conversation.title = title
+            transcript = f"user: {user_message}\nassistant: {full_content}"
+            tags = await generate_tags(transcript, self._llm)
+            if tags:
+                conversation.tags = ", ".join(tags)
             await session.commit()
 
         citations = [

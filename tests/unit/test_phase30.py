@@ -121,7 +121,7 @@ class TestTagsAPI:
     async def test_conversation_out_tags_default_empty(
         self, test_client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        """Conversations without tags should return empty list, not null."""
+        """Conversations always return tags as a list (may be populated by auto-tag)."""
         await _seed(db_session)
         chat = await test_client.post(
             "/api/v1/chat", json={"message": "Hello", "stream": False}
@@ -130,4 +130,5 @@ class TestTagsAPI:
 
         list_resp = await test_client.get("/api/v1/conversations")
         conv_data = next(c for c in list_resp.json() if c["id"] == conv_id)
-        assert conv_data["tags"] == []
+        # tags is always a list (auto-tag may have populated it on first turn)
+        assert isinstance(conv_data["tags"], list)

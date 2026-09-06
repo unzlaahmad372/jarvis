@@ -3,7 +3,7 @@
 A private, local-first AI assistant inspired by JARVIS from Iron Man.
 Runs entirely on your machine. No cloud account required.
 
-**Current status: Phase 28 — Plugins complete. Gap fixes applied.**
+**Current status: Phase 31 — Conversation Intelligence complete.**
 
 - ✅ Phase 0 — FastAPI backend, SQLite, Ollama, health endpoints
 - ✅ Phase 1 — Persistent chat, streaming (SSE), context budgeting, React/Vite frontend
@@ -29,6 +29,9 @@ Runs entirely on your machine. No cloud account required.
 - ✅ Phase 26 — Workspaces (CRUD, cascade guard, conversation count)
 - ✅ Phase 27 — Notifications (browser Notification API, automation polling)
 - ✅ Phase 28 — Plugins (drop-in tools, JARVIS_ENABLE_PLUGINS flag, 403 when disabled)
+- ✅ Phase 29 — Conversation Intelligence — auto-title, on-demand summary + panel
+- ✅ Phase 30 — Topic Tags — LLM tag generation, persistence, tag chips in sidebar
+- ✅ Phase 31 — Auto-tag on first turn, tag button in header, tag filter bar in sidebar
 
 ---
 
@@ -316,4 +319,7 @@ See [docs/security.md](docs/security.md) for full details.
 | 22 | Wake Word — continuous browser STT, "Hey JARVIS" | ✅ Done |
 | 23 | Conversation Search & Smart Sidebar | ✅ Done |
 | 24–28 | Settings / Export / Workspaces / Notifications / Plugins | ✅ Done |
-| 29 | Conversation Intelligence — auto-title, on-demand summary, topic tags | 🔄 Next |
+| 29 | Conversation Intelligence — auto-title, on-demand summary + panel | ✅ Done |
+| 30 | Topic Tags — LLM tag generation, persistence, tag chips in sidebar | ✅ Done |
+| 31 | Auto-tag on first turn, tag button in header, tag filter bar in sidebar | ✅ Done |
+| 32 | Model Switcher — runtime model selection per conversation | 🔄 Next |
