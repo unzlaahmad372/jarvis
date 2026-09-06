@@ -210,9 +210,15 @@ def test_delete_not_found_returns_false(manager):
     assert manager.delete("no-such-id") is False
 
 
-def test_prune_removes_old_backups(manager):
+def test_prune_removes_old_backups(manager, tmp_dirs):
+    backup_dir, _ = tmp_dirs
     record = manager.create()
-    # Prune with 0 days — everything is "old"
+    # Backdate the backup directory so it appears older than 0 days
+    import os
+    import time
+    dest = backup_dir / record.backup_id
+    old_time = time.time() - 86401  # 1 day + 1 second ago
+    os.utime(dest, (old_time, old_time))
     deleted = manager.prune(retention_days=0)
     assert record.backup_id in deleted
     assert manager.list_backups() == []

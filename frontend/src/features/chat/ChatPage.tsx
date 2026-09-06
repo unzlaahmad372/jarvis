@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
-import { chatApi, conversationsApi, toolsApi, voiceApi } from '@/services/api/client'
+import { chatApi, conversationsApi, toolsApi, visionApi, voiceApi } from '@/services/api/client'
 import { useChatStore } from '@/app/stores/chatStore'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
@@ -318,6 +318,9 @@ export function ChatPage() {
   } = useChatStore()
 
   const [input, setInput] = useState('')
+  const [visionResult, setVisionResult] = useState<string | null>(null)
+  const [visionLoading, setVisionLoading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -470,6 +473,27 @@ export function ChatPage() {
     tts.cancel()
   }
 
+  const handleImageAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setVisionLoading(true)
+    setVisionResult(null)
+    try {
+      const res = await visionApi.analyse(file)
+      if (res.success) {
+        setVisionResult(res.description)
+        setInput((prev) => prev + (prev ? '\n' : '') + `[Image: ${file.name}]\n${res.description}`)
+      } else {
+        setVisionResult(`Error: ${res.error ?? 'Unknown'}`)
+      }
+    } catch (err) {
+      setVisionResult(err instanceof Error ? err.message : 'Vision failed')
+    } finally {
+      setVisionLoading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -551,6 +575,23 @@ export function ChatPage() {
               {stt.listening ? '⏹' : '🎤'}
             </button>
           )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleImageAttach}
+            aria-label="Attach image"
+          />
+          <button
+            className={styles.attachBtn}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isStreaming || visionLoading}
+            title="Attach image for vision analysis"
+            aria-label="Attach image"
+          >
+            {visionLoading ? '⏳' : '🖼️'}
+          </button>
           <textarea
             ref={textareaRef}
             className={styles.textarea}

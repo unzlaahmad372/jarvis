@@ -457,3 +457,12 @@ class SSEEvent(BaseModel):
     type: str
     timestamp: datetime
     payload: dict[str, object] = {}
+
+
+# ── Vision (Phase 14) ────────────────────────────────────────────────────────
+
+
+class VisionAnalyseResponse(BaseModel):
+    success: bool
+    description: str
+    error: str | None = None

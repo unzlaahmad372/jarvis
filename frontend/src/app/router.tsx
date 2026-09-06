@@ -11,6 +11,8 @@ import { AutomationsPage } from '@/features/automation/AutomationsPage'
 import { BackupPage } from '@/features/backup/BackupPage'
 import { AuthPage } from '@/features/auth/AuthPage'
 import { AuditPage } from '@/features/audit/AuditPage'
+import { MCPPage } from '@/features/mcp/MCPPage'
+import { ObservabilityPage } from '@/features/observability/ObservabilityPage'
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +30,8 @@ export const router = createBrowserRouter([
       { path: 'backup', element: <BackupPage /> },
       { path: 'auth', element: <AuthPage /> },
       { path: 'audit', element: <AuditPage /> },
+      { path: 'mcp', element: <MCPPage /> },
+      { path: 'observability', element: <ObservabilityPage /> },
       { path: 'system', element: <SystemPage /> },
       {
         path: 'settings',

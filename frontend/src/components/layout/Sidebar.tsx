@@ -12,6 +12,8 @@ const NAV_ITEMS = [
   { to: '/backup', label: 'Backup', icon: '💾' },
   { to: '/auth', label: 'Devices', icon: '🔑' },
   { to: '/audit', label: 'Audit', icon: '📋' },
+  { to: '/mcp', label: 'MCP', icon: '🔌' },
+  { to: '/observability', label: 'Observe', icon: '📊' },
   { to: '/system', label: 'System', icon: '⚡' },
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ] as const

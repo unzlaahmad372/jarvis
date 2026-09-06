@@ -243,6 +243,31 @@ export const auditApi = {
     request<RetentionResult>('/api/v1/audit/retention/run', { method: 'POST' }),
 }
 
+// ── MCP (Phase 13) ──────────────────────────────────────────────────────────────
+
+export const mcpApi = {
+  listServers: () => request<{ id: string; tool_count: number; tools: string[] }[]>('/api/v1/mcp/servers'),
+  listServerTools: (serverId: string) =>
+    request<{ name: string; description: string; input_schema: Record<string, unknown> }[]>(
+      `/api/v1/mcp/servers/${encodeURIComponent(serverId)}/tools`
+    ),
+}
+
+// ── Vision (Phase 14) ─────────────────────────────────────────────────────────
+
+export const visionApi = {
+  analyse: async (file: File, prompt = 'Describe this image in detail.'): Promise<{ success: boolean; description: string; error: string | null }> => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(`${BASE_URL}/api/v1/vision/analyse?prompt=${encodeURIComponent(prompt)}`, {
+      method: 'POST',
+      body: form,
+    })
+    if (!res.ok) throw new Error(`Vision error: ${res.status}`)
+    return res.json()
+  },
+}
+
 // ── Chat ──────────────────────────────────────────────────────────────────────
 
 export const chatApi = {

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import DbSession, SettingsDep, get_orchestrator
@@ -14,6 +14,7 @@ from app.api.schemas.chat import (
     ChatResponse,
     MessageOut,
     TokenUsage,
+    VisionAnalyseResponse,
 )
 from app.brain.orchestrator import ChatOrchestrator
 from app.inference.manager import InferenceQueueFullError
@@ -69,6 +70,49 @@ def build_orchestrator(settings: object) -> ChatOrchestrator:
 
 
 OrchestratorDep = Annotated[ChatOrchestrator, Depends(get_orchestrator)]
+
+
+@router.post(
+    "/vision/analyse",
+    summary="Analyse an uploaded image",
+    response_model=VisionAnalyseResponse,
+)
+async def vision_analyse(
+    file: UploadFile,
+    prompt: str = "Describe this image in detail.",
+    settings: SettingsDep = ...,  # type: ignore[assignment]
+) -> VisionAnalyseResponse:
+    """Upload an image and get a description from the local vision model."""
+    import tempfile
+    from pathlib import Path
+
+    if not settings.enable_vision:
+        raise HTTPException(status_code=503, detail="Vision is not enabled")
+
+    suffix = Path(file.filename or "img").suffix.lower()
+    allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
+    if suffix not in allowed:
+        raise HTTPException(status_code=400, detail=f"Unsupported image format: {suffix}")
+
+    data = await file.read()
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+
+    from app.tools.vision.tools import VisionTool
+    result = await VisionTool().execute({"image_path": tmp_path, "prompt": prompt})
+
+    from pathlib import Path as _Path
+    try:
+        _Path(tmp_path).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+    return VisionAnalyseResponse(
+        success=result.success,
+        description=result.output,
+        error=result.error,
+    )
 
 
 @router.post("/chat", summary="Send a chat message", response_model=None)

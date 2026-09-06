@@ -1,0 +1,104 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.title {
+  font-family: var(--hud-font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--hud-accent);
+  letter-spacing: 0.12em;
+}
+
+.subtitle {
+  font-family: var(--hud-font-mono);
+  font-size: 0.75rem;
+  color: var(--hud-text-secondary);
+}
+
+.loading,
+.empty {
+  font-family: var(--hud-font-mono);
+  font-size: 0.85rem;
+  color: var(--hud-text-secondary);
+  line-height: 1.6;
+}
+
+.empty code {
+  color: var(--hud-accent);
+}
+
+.serverList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.card {
+  background: var(--hud-surface);
+  border: 1px solid var(--hud-border);
+  border-radius: 6px;
+  padding: 1.25rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.serverId {
+  font-family: var(--hud-font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--hud-text-primary);
+}
+
+.badge {
+  font-family: var(--hud-font-mono);
+  font-size: 0.7rem;
+  color: var(--hud-accent);
+  border: 1px solid var(--hud-accent);
+  border-radius: 10px;
+  padding: 0.1rem 0.5rem;
+}
+
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.5rem;
+}
+
+.tool {
+  background: color-mix(in srgb, var(--hud-bg) 60%, transparent);
+  border: 1px solid var(--hud-border);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.toolName {
+  font-family: var(--hud-font-mono);
+  font-size: 0.78rem;
+  color: var(--hud-text-primary);
+}
+
+.toolDesc {
+  font-size: 0.72rem;
+  color: var(--hud-text-secondary);
+  line-height: 1.4;
+}

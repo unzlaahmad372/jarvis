@@ -124,6 +124,13 @@ class Settings(BaseSettings):
     enable_voice: bool = True
     voice_auto_speak: bool = True
 
+    # ── Vision (Phase 14) ─────────────────────────────────────────────────────
+    vision_model: str = "llava"  # Ollama vision model
+    enable_vision: bool = True
+
+    # ── MCP (Phase 13) ──────────────────────────────────────────────────────
+    mcp_servers: str = ""  # JSON array of MCP server configs
+
     # ── Feature flags ────────────────────────────────────────────────────────
     enable_cloud: bool = False
     enable_shell: bool = False

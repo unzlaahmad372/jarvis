@@ -472,6 +472,28 @@
   cursor: not-allowed;
 }
 
+.attachBtn {
+  background: var(--hud-surface-elevated);
+  border: 1px solid var(--hud-border, var(--hud-line));
+  border-radius: var(--hud-radius);
+  color: var(--hud-text-secondary);
+  font-size: 1rem;
+  padding: 10px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color var(--hud-motion-fast), box-shadow var(--hud-motion-fast);
+}
+
+.attachBtn:hover:not(:disabled) {
+  border-color: var(--hud-accent-muted);
+  box-shadow: var(--hud-glow-soft);
+}
+
+.attachBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .micActive {
   background: rgba(255, 61, 61, 0.12);
   border-color: var(--hud-danger);

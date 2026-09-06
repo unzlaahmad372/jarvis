@@ -31,9 +31,11 @@ from app.api.routes import conversations as conversations_router
 from app.api.routes import documents as documents_router
 from app.api.routes import health as health_router
 from app.api.routes import kubernetes as kubernetes_router
+from app.api.routes import mcp as mcp_router
 from app.api.routes import memory as memory_router
 from app.api.routes import tools as tools_router
 from app.api.routes import voice as voice_router
+from app.api.routes import wake as wake_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import close_db, init_db
@@ -69,6 +71,11 @@ def _register_tools(settings: Settings) -> None:
     registry.register(OpenFileTool(far))
     registry.register(SystemInfoTool())
     registry.register(DiskUsageTool())
+
+    # Vision tool (Phase 14)
+    if settings.enable_vision:
+        from app.tools.vision.tools import VisionTool
+        registry.register(VisionTool())
 
     # Kubernetes tools — registered only when enabled
     if settings.enable_kubernetes:
@@ -162,6 +169,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── Register tools ────────────────────────────────────────────────────────
     _register_tools(settings)
 
+    # ── MCP servers (Phase 13) ────────────────────────────────────────────────────────
+    from app.mcp.registry import get_mcp_registry, reset_mcp_registry
+    from app.tools.registry import get_registry
+    reset_mcp_registry()
+    mcp_reg = get_mcp_registry()
+    await mcp_reg.start_all(settings.mcp_servers, get_registry())
+
     # ── Build singleton orchestrator (shared InferenceManager semaphore) ──────
     from app.api.routes.chat import build_orchestrator
     orchestrator = build_orchestrator(settings)
@@ -213,6 +227,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             pass
 
     logger.info("jarvis_shutting_down")
+    from app.mcp.registry import get_mcp_registry
+    await get_mcp_registry().stop_all()
     await close_db()
 
     from app.core.telemetry import shutdown_telemetry
@@ -261,12 +277,14 @@ def create_app() -> FastAPI:
     app.include_router(memory_router.router)
     app.include_router(tools_router.router)
     app.include_router(voice_router.router)
+    app.include_router(wake_router.router)
     app.include_router(kubernetes_router.router)
     app.include_router(cicd_router.router)
     app.include_router(automation_router.router)
     app.include_router(backup_router.router)
     app.include_router(auth_router.router)
     app.include_router(audit_router.router)
+    app.include_router(mcp_router.router)
 
     # ── Rate limiting middleware ────────────────────────────────────────────────────────────────
     if settings.rate_limit_enabled:
