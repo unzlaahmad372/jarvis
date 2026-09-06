@@ -148,7 +148,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_security_constraints(self) -> Settings:
-        if self.host not in ("127.0.0.1", "::1", "localhost") and not self.enable_remote_access:
+        if (
+            self.host not in ("127.0.0.1", "::1", "localhost")
+            and not self.enable_remote_access
+            and self.runtime_mode != "container"
+        ):
             raise ValueError(
                 f"JARVIS_HOST is set to '{self.host}' but JARVIS_ENABLE_REMOTE_ACCESS=false. "
                 "Remote access is a separate security milestone. "

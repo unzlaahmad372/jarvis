@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 
 
@@ -50,6 +51,13 @@ class LLMProvider(ABC):
     @abstractmethod
     async def complete(self, prompt: str, system: str | None = None) -> LLMResponse:
         """Send a completion request and return a structured response."""
+
+    @abstractmethod
+    async def complete_stream(
+        self, prompt: str, system: str | None = None
+    ) -> AsyncGenerator[str, None]:
+        """Stream completion tokens as they are generated."""
+        yield ""  # pragma: no cover
 
     @abstractmethod
     async def get_capabilities(self) -> ModelCapabilities:

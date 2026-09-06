@@ -5,6 +5,7 @@ Never requires a live Ollama server. Supports configurable scenarios.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from enum import StrEnum
 
 from app.llm.base import LLMProvider, LLMResponse, ModelCapabilities
@@ -64,6 +65,14 @@ class FakeLLMProvider(LLMProvider):
             output_tokens=len(self._response_text) // 4,
             finish_reason="stop",
         )
+
+    async def complete_stream(
+        self, prompt: str, system: str | None = None
+    ) -> AsyncGenerator[str, None]:
+        # Yield response word-by-word for realistic fake streaming
+        await self.complete(prompt, system)  # honour scenario checks
+        for word in self._response_text.split():
+            yield word + " "
 
     async def get_capabilities(self) -> ModelCapabilities:
         return ModelCapabilities(

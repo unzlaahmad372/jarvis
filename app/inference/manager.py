@@ -9,7 +9,7 @@ Enforces:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Coroutine
+from collections.abc import AsyncGenerator, Callable, Coroutine
 from typing import Any, TypeVar
 
 from app.core.logging import get_logger
@@ -102,5 +102,33 @@ class InferenceManager:
         except Exception:
             # Only decrement if we never acquired the semaphore (still queued)
             if not acquired and self._queued > 0:
+                self._queued -= 1
+            raise
+
+    async def stream(
+        self,
+        gen_fn: Callable[[], AsyncGenerator[str, None]],
+        *,
+        request_id: str = "unknown",
+    ) -> AsyncGenerator[str, None]:
+        """Stream tokens from an async generator under concurrency constraints.
+
+        Acquires the semaphore for the full duration of the stream.
+        """
+        if self._queued >= self._max_queue:
+            raise InferenceQueueFullError(
+                f"JARVIS is currently busy. (queue={self._queued}/{self._max_queue})"
+            )
+
+        self._queued += 1
+        try:
+            async with self._semaphore:
+                self._queued -= 1
+                logger.debug("inference_stream_started", request_id=request_id)
+                async for token in gen_fn():
+                    yield token
+                logger.debug("inference_stream_completed", request_id=request_id)
+        except Exception:
+            if self._queued > 0:
                 self._queued -= 1
             raise

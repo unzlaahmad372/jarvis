@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+
 import httpx
 
 from app.core.logging import get_logger
@@ -56,6 +58,37 @@ class OllamaProvider(LLMProvider):
             finish_reason=data.get("done_reason"),
             raw=data,
         )
+
+    async def complete_stream(
+        self, prompt: str, system: str | None = None
+    ) -> AsyncGenerator[str, None]:
+        """Stream tokens from Ollama as they are generated."""
+        payload: dict[str, object] = {
+            "model": self._model,
+            "prompt": prompt,
+            "stream": True,
+        }
+        if system:
+            payload["system"] = system
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            async with client.stream(
+                "POST", f"{self._base_url}/api/generate", json=payload
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    import json as _json
+                    try:
+                        chunk = _json.loads(line)
+                    except ValueError:
+                        continue
+                    token = chunk.get("response", "")
+                    if token:
+                        yield token
+                    if chunk.get("done"):
+                        break
 
     async def get_capabilities(self) -> ModelCapabilities:
         """Probe Ollama for model metadata and derive context capabilities."""

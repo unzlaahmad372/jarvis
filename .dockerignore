@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+.coverage
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Data (mounted as volume in production)
+data/database/*.db
+data/database/*.db-shm
+data/database/*.db-wal
+data/indexes/
+data/documents/
+data/backups/
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Tauri
+frontend/src-tauri/target/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docs / tests (not needed in image)
+tests/
+evals/
+docs/
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+.env
+.secrets.baseline

@@ -265,7 +265,7 @@ class ChatOrchestrator:
         user_message: str,
         conversation_id: int | None = None,
     ) -> AsyncGenerator[str, None]:
-        """Stream a chat turn as SSE events."""
+        """Stream a chat turn as SSE events with true token-by-token streaming."""
         import json
         import uuid
         from datetime import UTC, datetime
@@ -288,45 +288,159 @@ class ChatOrchestrator:
 
         yield _event("THINKING", {})
 
+        # ── Run everything up to the LLM call ────────────────────────────────
         try:
-            user_msg, asst_msg, compacted, rag_result, plan_result = await self.chat(
-                session, user_message, conversation_id
+            conversation = await self._get_or_create_conversation(
+                session, conversation_id
             )
+            messages, summaries = await self._load_history(session, conversation)
+
+            compacted = False
+            to_compact = select_messages_to_compact(
+                messages, history_token_budget=self._settings.recent_history_tokens
+            )
+            if to_compact:
+                summary = await compact_conversation(
+                    conversation, to_compact, self._llm
+                )
+                session.add(summary)
+                summaries.append(summary)
+                compacted = True
+                messages, summaries = await self._load_history(session, conversation)
+
+            import re
+            _remember_re = re.compile(
+                r"^remember(?:\s+that|:)?\s+(.+)$", re.IGNORECASE | re.DOTALL
+            )
+            _m = _remember_re.match(user_message.strip())
+            if _m:
+                await remember(
+                    session,
+                    content=_m.group(1).strip(),
+                    source=f"conversation:{conversation.id}",
+                )
+                await session.flush()
+
+            plan_result: PlanResult | None = None
+            if self._planner:
+                plan_result = await self._planner.plan(user_message, session)
+
+            rag_result: RetrievalResult | None = None
+            do_rag: bool = bool(self._embedding_provider and self._vector_store)
+            if do_rag and plan_result:
+                do_rag = plan_result.intent in (
+                    Intent.KNOWLEDGE_SEARCH,
+                    Intent.GENERAL_CHAT,
+                    Intent.MEMORY_SEARCH,
+                )
+            if do_rag:
+                rag_result = await retrieve(
+                    query=user_message,
+                    embedding_provider=self._embedding_provider,  # type: ignore[arg-type]
+                    vector_store=self._vector_store,  # type: ignore[arg-type]
+                    top_k=self._settings.retrieval_top_k,
+                    score_threshold=self._settings.retrieval_score_threshold,
+                    rag_token_budget=self._settings.rag_context_tokens,
+                )
+
+            memories = await search_memories(session, user_message, limit=8)
+            memory_slot = build_memory_context_slot(
+                memories, token_budget=self._settings.memory_context_tokens
+            )
+
+            history_slots = build_history_slots(
+                messages, summaries, self._settings.recent_history_tokens
+            )
+            extra_slots = list(history_slots)
+            if plan_result:
+                extra_slots.extend(plan_result.tool_context_slots)
+            if rag_result and rag_result.context_slot:
+                extra_slots.append(rag_result.context_slot)
+            if memory_slot:
+                extra_slots.append(memory_slot)
+
+            built = self._context_builder.build(
+                user_message=user_message,
+                extra_slots=extra_slots,
+            )
+
+            user_seq = await self._next_sequence(session, conversation.id)
+            user_msg = Message(
+                conversation_id=conversation.id,
+                role="user",
+                content=user_message,
+                sequence=user_seq,
+                context_tokens=built.total_tokens,
+            )
+            session.add(user_msg)
+            await session.flush()
+
         except Exception as exc:
             yield _event("ERROR", {"code": "CHAT_ERROR", "message": str(exc)})
             return
 
-        citations = []
-        if rag_result:
-            citations = [
-                {
-                    "filename": c.filename,
-                    "chunk_index": c.chunk_index,
-                    "page": c.page,
-                    "score": round(c.score, 3),
-                }
-                for c in rag_result.citations
-            ]
+        # ── True token-by-token streaming ─────────────────────────────────────
+        full_content = ""
+        try:
+            async for token in self._inference_manager.stream(
+                lambda: self._llm.complete_stream(
+                    built.user_message, system=built.system_prompt
+                )
+            ):
+                full_content += token
+                yield _event("RESPONSE_STREAMING", {"chunk": token})
+        except Exception as exc:
+            yield _event("ERROR", {"code": "STREAM_ERROR", "message": str(exc)})
+            return
+        # ── Persist and emit RESPONSE_COMPLETE ────────────────────────────────
+        asst_seq = user_seq + 1
+        asst_msg = Message(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=full_content,
+            sequence=asst_seq,
+            input_tokens=None,
+            output_tokens=len(full_content.split()),
+            context_tokens=built.total_tokens,
+            model=self._llm.model_name,
+            provider=self._llm.provider_name,
+            finish_reason="stop",
+        )
+        session.add(asst_msg)
+        conversation.total_output_tokens += len(full_content.split())
+        if conversation.title is None:
+            conversation.title = user_message[:120]
+        await session.commit()
+        await session.refresh(user_msg)
+        await session.refresh(asst_msg)
 
-        plan_steps = []
-        if plan_result:
-            plan_steps = [
-                {
-                    "tool_name": s.tool_name,
-                    "success": s.success,
-                    "policy_decision": s.policy_decision,
-                    "requires_confirmation": s.requires_confirmation,
-                    "error": s.error,
-                }
-                for s in plan_result.steps
-            ]
+        citations = [
+            {
+                "filename": c.filename,
+                "chunk_index": c.chunk_index,
+                "page": c.page,
+                "score": round(c.score, 3),
+            }
+            for c in (rag_result.citations if rag_result else [])
+        ]
+        plan_steps = [
+            {
+                "tool_name": s.tool_name,
+                "success": s.success,
+                "policy_decision": s.policy_decision,
+                "requires_confirmation": s.requires_confirmation,
+                "confirmation_id": s.confirmation_id if hasattr(s, "confirmation_id") else None,
+                "error": s.error,
+            }
+            for s in (plan_result.steps if plan_result else [])
+        ]
 
         yield _event(
             "RESPONSE_COMPLETE",
             {
                 "conversation_id": asst_msg.conversation_id,
                 "message_id": asst_msg.id,
-                "content": asst_msg.content,
+                "content": full_content,
                 "role": "assistant",
                 "model": asst_msg.model,
                 "provider": asst_msg.provider,
