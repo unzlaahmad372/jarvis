@@ -1,12 +1,14 @@
 """Conversation management endpoints.
 
-GET /api/v1/conversations          — list all conversations
-GET /api/v1/conversations/{id}     — get conversation with messages
+GET   /api/v1/conversations          — list all conversations
+GET   /api/v1/conversations/{id}     — get conversation with messages
+PATCH /api/v1/conversations/{id}     — rename conversation
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import DbSession
@@ -16,6 +18,10 @@ from app.db.models import Conversation, Message
 router = APIRouter(prefix="/api/v1/conversations", tags=["conversations"])
 
 
+class ConversationPatch(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+
+
 @router.get("", summary="List conversations")
 async def list_conversations(session: DbSession) -> list[ConversationOut]:
     result = await session.execute(
@@ -23,6 +29,23 @@ async def list_conversations(session: DbSession) -> list[ConversationOut]:
     )
     conversations = result.scalars().all()
     return [ConversationOut.model_validate(c) for c in conversations]
+
+
+@router.patch("/{conversation_id}", summary="Rename conversation", response_model=ConversationOut)
+async def rename_conversation(
+    conversation_id: int,
+    body: ConversationPatch,
+    session: DbSession,
+) -> ConversationOut:
+    result = await session.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )
+    conv = result.scalar_one_or_none()
+    if conv is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Conversation {conversation_id} not found")
+    conv.title = body.title
+    await session.commit()
+    return ConversationOut.model_validate(conv)
 
 
 @router.get("/{conversation_id}", summary="Get conversation with messages")

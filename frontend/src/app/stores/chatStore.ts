@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand'
-import type { ConfirmationOut, PlanStep } from '@/types/api'
+import type { CitationOut, ConfirmationOut, PlanStep } from '@/types/api'
 
 export type JarvisState =
   | 'IDLE'
@@ -14,23 +14,23 @@ export type JarvisState =
   | 'ERROR'
   | 'OFFLINE'
 
+export interface TokenUsageSummary {
+  input: number | null
+  output: number | null
+  context: number | null
+}
+
 interface ChatStore {
-  /** Currently active conversation ID (null = new conversation) */
   activeConversationId: number | null
-  /** Streaming response text being built up */
   streamingContent: string
-  /** Whether a request is in flight */
   isStreaming: boolean
-  /** Current JARVIS core state */
   jarvisState: JarvisState
-  /** Last error message */
   lastError: string | null
-  /** Pending tool confirmation waiting for user approval */
   pendingConfirmation: ConfirmationOut | null
-  /** Plan steps from the last completed turn */
   lastPlanSteps: PlanStep[]
-  /** Intent from the last completed turn */
   lastIntent: string | null
+  lastCitations: CitationOut[]
+  lastTokenUsage: TokenUsageSummary | null
 
   setActiveConversation: (id: number | null) => void
   startStreaming: () => void
@@ -41,6 +41,8 @@ interface ChatStore {
   setJarvisState: (state: JarvisState) => void
   setPendingConfirmation: (c: ConfirmationOut | null) => void
   setLastPlanSteps: (steps: PlanStep[], intent: string) => void
+  setLastCitations: (citations: CitationOut[]) => void
+  setLastTokenUsage: (usage: TokenUsageSummary) => void
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
@@ -52,6 +54,8 @@ export const useChatStore = create<ChatStore>((set) => ({
   pendingConfirmation: null,
   lastPlanSteps: [],
   lastIntent: null,
+  lastCitations: [],
+  lastTokenUsage: null,
 
   setActiveConversation: (id) => set({ activeConversationId: id }),
 
@@ -64,6 +68,8 @@ export const useChatStore = create<ChatStore>((set) => ({
       pendingConfirmation: null,
       lastPlanSteps: [],
       lastIntent: null,
+      lastCitations: [],
+      lastTokenUsage: null,
     }),
 
   appendStreamChunk: (chunk) =>
@@ -92,4 +98,8 @@ export const useChatStore = create<ChatStore>((set) => ({
 
   setLastPlanSteps: (steps, intent) =>
     set({ lastPlanSteps: steps, lastIntent: intent }),
+
+  setLastCitations: (citations) => set({ lastCitations: citations }),
+
+  setLastTokenUsage: (usage) => set({ lastTokenUsage: usage }),
 }))

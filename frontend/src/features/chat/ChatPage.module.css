@@ -58,6 +58,12 @@
   align-items: flex-start;
 }
 
+.messageHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .messageRole {
   font-family: var(--hud-font-mono);
   font-size: var(--hud-font-size-xs);
@@ -68,6 +74,20 @@
 .user .messageRole { color: var(--hud-accent-muted); }
 .assistant .messageRole { color: var(--hud-text-dim); }
 
+.copyBtn {
+  background: none;
+  border: none;
+  color: var(--hud-text-dim);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity var(--hud-motion-fast), color var(--hud-motion-fast);
+}
+
+.message:hover .copyBtn { opacity: 1; }
+.copyBtn:hover { color: var(--hud-accent); }
+
 .messageContent {
   background: var(--hud-surface-elevated);
   border: 1px solid var(--hud-line);
@@ -75,7 +95,6 @@
   padding: 10px 14px;
   font-size: var(--hud-font-size-base);
   line-height: 1.6;
-  white-space: pre-wrap;
   word-break: break-word;
 }
 
@@ -85,9 +104,228 @@
   color: var(--hud-text-primary);
 }
 
+.userText {
+  white-space: pre-wrap;
+}
+
 .streaming .messageContent {
   border-color: var(--hud-accent-muted);
   box-shadow: var(--hud-glow-soft);
+}
+
+/* ── Markdown content ──────────────────────────────────────────────────────── */
+
+.markdownContent {
+  font-size: var(--hud-font-size-base);
+  line-height: 1.7;
+}
+
+.markdownContent p { margin: 0 0 0.6em; }
+.markdownContent p:last-child { margin-bottom: 0; }
+.markdownContent ul, .markdownContent ol { margin: 0.4em 0 0.6em 1.4em; padding: 0; }
+.markdownContent li { margin-bottom: 0.2em; }
+.markdownContent h1, .markdownContent h2, .markdownContent h3 {
+  font-family: var(--hud-font-mono);
+  color: var(--hud-accent);
+  margin: 0.8em 0 0.4em;
+  letter-spacing: 0.05em;
+}
+.markdownContent h1 { font-size: 1.1em; }
+.markdownContent h2 { font-size: 1em; }
+.markdownContent h3 { font-size: 0.95em; }
+.markdownContent blockquote {
+  border-left: 2px solid var(--hud-accent-muted);
+  margin: 0.5em 0;
+  padding: 0.2em 0.8em;
+  color: var(--hud-text-secondary);
+}
+.markdownContent strong { color: var(--hud-text-primary); font-weight: 600; }
+.markdownContent em { color: var(--hud-text-secondary); }
+.markdownContent hr {
+  border: none;
+  border-top: 1px solid var(--hud-line);
+  margin: 0.8em 0;
+}
+
+.inlineCode {
+  font-family: var(--hud-font-mono);
+  font-size: 0.88em;
+  background: rgba(0, 255, 170, 0.07);
+  border: 1px solid rgba(0, 255, 170, 0.15);
+  border-radius: 3px;
+  padding: 0.1em 0.4em;
+  color: var(--hud-accent);
+}
+
+.codeBlock {
+  font-family: var(--hud-font-mono);
+  font-size: 0.82em;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  padding: 10px 14px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+  line-height: 1.5;
+  color: var(--hud-text-primary);
+}
+
+.mdLink {
+  color: var(--hud-accent-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.mdLink:hover { color: var(--hud-accent); }
+
+/* ── Citation cards ────────────────────────────────────────────────────────── */
+
+.citations {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.citationsLabel {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+  letter-spacing: 0.08em;
+  margin-right: 2px;
+}
+
+.citationCard {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 255, 170, 0.05);
+  border: 1px solid rgba(0, 255, 170, 0.2);
+  border-radius: var(--hud-radius);
+  padding: 2px 8px;
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  cursor: default;
+}
+
+.citationIndex {
+  color: var(--hud-accent-muted);
+  font-weight: 600;
+}
+
+.citationFile {
+  color: var(--hud-text-secondary);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.citationPage {
+  color: var(--hud-text-dim);
+}
+
+/* ── Conversation header ───────────────────────────────────────────────────── */
+
+.convHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--hud-line);
+  background: var(--hud-surface);
+  flex-shrink: 0;
+  min-height: 36px;
+}
+
+.titleBtn {
+  background: none;
+  border: none;
+  color: var(--hud-text-secondary);
+  cursor: pointer;
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--hud-motion-fast);
+}
+
+.titleBtn:hover { color: var(--hud-accent); }
+
+.editIcon {
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity var(--hud-motion-fast);
+}
+
+.titleBtn:hover .editIcon { opacity: 1; }
+
+.titleInput {
+  background: var(--hud-surface-elevated);
+  border: 1px solid var(--hud-accent-muted);
+  border-radius: 3px;
+  color: var(--hud-text-primary);
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  padding: 2px 8px;
+  outline: none;
+  width: 220px;
+}
+
+/* ── Context usage bar ─────────────────────────────────────────────────────── */
+
+.contextBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.contextLabel {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+  letter-spacing: 0.06em;
+}
+
+.contextTrack {
+  width: 80px;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.contextFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+.contextPct {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ── Token summary in status bar ───────────────────────────────────────────── */
+
+.tokenSummary {
+  font-family: var(--hud-font-mono);
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
 }
 
 .tokenInfo {

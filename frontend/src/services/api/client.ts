@@ -69,6 +69,11 @@ export const healthApi = {
 export const conversationsApi = {
   list: () => request<ConversationOut[]>('/api/v1/conversations'),
   get: (id: number) => request<ConversationDetail>(`/api/v1/conversations/${id}`),
+  rename: (id: number, title: string) =>
+    request<ConversationOut>(`/api/v1/conversations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
+    }),
 }
 
 // ── Documents ────────────────────────────────────────────────────────────────

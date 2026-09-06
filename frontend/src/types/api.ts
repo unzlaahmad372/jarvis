@@ -75,6 +75,13 @@ export interface PlanStep {
   error: string | null
 }
 
+export interface CitationOut {
+  filename: string
+  chunk_index: number
+  page: number | null
+  score: number
+}
+
 export interface ResponseCompletePayload {
   conversation_id: number
   message_id: number
@@ -88,6 +95,7 @@ export interface ResponseCompletePayload {
   compacted: boolean
   intent: string
   plan_steps: PlanStep[]
+  citations: CitationOut[]
 }
 
 export interface ConfirmationOut {

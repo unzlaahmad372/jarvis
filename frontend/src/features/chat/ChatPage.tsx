@@ -1,10 +1,12 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import ReactMarkdown from 'react-markdown'
 import { chatApi, conversationsApi, toolsApi, voiceApi } from '@/services/api/client'
 import { useChatStore } from '@/app/stores/chatStore'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
 import type {
+  CitationOut,
   ConfirmationOut,
   MessageOut,
   PlanStep,
@@ -22,7 +24,7 @@ const RISK_COLORS: Record<string, string> = {
   DANGEROUS: 'var(--hud-danger)',
 }
 
-// ── Tool approval panel (spec §71) ────────────────────────────────────────────
+// ── Tool approval panel ───────────────────────────────────────────────────────
 
 function ToolApprovalPanel({
   confirmation,
@@ -55,26 +57,14 @@ function ToolApprovalPanel({
         <dd className={styles.mono}>{expiresAt.toLocaleTimeString()}</dd>
       </dl>
       <div className={styles.approvalActions}>
-        <button
-          className={styles.denyBtn}
-          onClick={onDeny}
-          aria-label="Deny this action"
-        >
-          ✕ Deny
-        </button>
-        <button
-          className={styles.approveBtn}
-          onClick={onApprove}
-          aria-label="Approve this action"
-        >
-          ✓ Approve
-        </button>
+        <button className={styles.denyBtn} onClick={onDeny} aria-label="Deny this action">✕ Deny</button>
+        <button className={styles.approveBtn} onClick={onApprove} aria-label="Approve this action">✓ Approve</button>
       </div>
     </div>
   )
 }
 
-// ── Plan steps display ────────────────────────────────────────────────────────
+// ── Plan steps bar ────────────────────────────────────────────────────────────
 
 function PlanStepsBar({ steps, intent }: { steps: PlanStep[]; intent: string | null }) {
   if (steps.length === 0) return null
@@ -94,16 +84,125 @@ function PlanStepsBar({ steps, intent }: { steps: PlanStep[]; intent: string | n
   )
 }
 
+// ── Citation cards ────────────────────────────────────────────────────────────
+
+function CitationCards({ citations }: { citations: CitationOut[] }) {
+  if (citations.length === 0) return null
+  return (
+    <div className={styles.citations} aria-label="Sources">
+      <span className={styles.citationsLabel}>Sources</span>
+      {citations.map((c, i) => (
+        <span key={i} className={styles.citationCard} title={`Score: ${c.score}`}>
+          <span className={styles.citationIndex}>[{i + 1}]</span>
+          <span className={styles.citationFile}>{c.filename}</span>
+          {c.page != null && <span className={styles.citationPage}>p.{c.page}</span>}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// ── Context usage bar ─────────────────────────────────────────────────────────
+
+function ContextBar({
+  contextTokens,
+  maxTokens,
+}: {
+  contextTokens: number | null
+  maxTokens: number
+}) {
+  if (contextTokens == null) return null
+  const pct = Math.min(100, Math.round((contextTokens / maxTokens) * 100))
+  const color =
+    pct >= 90 ? 'var(--hud-danger)' :
+    pct >= 70 ? 'var(--hud-warning)' :
+    'var(--hud-accent-muted)'
+
+  return (
+    <div className={styles.contextBar} title={`${contextTokens.toLocaleString()} / ${maxTokens.toLocaleString()} tokens`}>
+      <span className={styles.contextLabel}>ctx</span>
+      <div className={styles.contextTrack} aria-label={`Context usage ${pct}%`}>
+        <div className={styles.contextFill} style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className={styles.contextPct} style={{ color }}>{pct}%</span>
+    </div>
+  )
+}
+
+// ── Markdown message content ──────────────────────────────────────────────────
+
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <div className={styles.markdownContent}>
+      <ReactMarkdown
+        components={{
+          code({ className, children, ...props }) {
+            const isBlock = className?.startsWith('language-')
+            if (isBlock) {
+              return (
+                <pre className={styles.codeBlock}>
+                  <code className={className} {...props}>{children}</code>
+                </pre>
+              )
+            }
+            return <code className={styles.inlineCode} {...props}>{children}</code>
+          },
+          pre({ children }) {
+            // react-markdown wraps code in pre; we handle it in code component
+            return <>{children}</>
+          },
+          a({ href, children }) {
+            return <a href={href} target="_blank" rel="noopener noreferrer" className={styles.mdLink}>{children}</a>
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
 // ── Message bubble ────────────────────────────────────────────────────────────
 
-function MessageBubble({ message }: { message: MessageOut }) {
+function MessageBubble({
+  message,
+  onCopy,
+}: {
+  message: MessageOut
+  onCopy: (text: string) => void
+}) {
   const isUser = message.role === 'user'
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    onCopy(message.content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
   return (
     <div className={`${styles.message} ${isUser ? styles.user : styles.assistant}`}>
-      <div className={styles.messageRole} aria-label={`${message.role} message`}>
-        {isUser ? 'YOU' : 'JARVIS'}
+      <div className={styles.messageHeader}>
+        <span className={styles.messageRole} aria-label={`${message.role} message`}>
+          {isUser ? 'YOU' : 'JARVIS'}
+        </span>
+        {!isUser && (
+          <button
+            className={styles.copyBtn}
+            onClick={handleCopy}
+            aria-label="Copy message"
+            title="Copy"
+          >
+            {copied ? '✓' : '⎘'}
+          </button>
+        )}
       </div>
-      <div className={styles.messageContent}>{message.content}</div>
+      <div className={styles.messageContent}>
+        {isUser
+          ? <div className={styles.userText}>{message.content}</div>
+          : <MarkdownContent content={message.content} />
+        }
+      </div>
       {message.token_usage && (
         <div className={styles.tokenInfo} aria-label="Token usage">
           {message.token_usage.input_tokens != null && (
@@ -123,11 +222,71 @@ function MessageBubble({ message }: { message: MessageOut }) {
 function StreamingBubble({ content }: { content: string }) {
   return (
     <div className={`${styles.message} ${styles.assistant} ${styles.streaming}`}>
-      <div className={styles.messageRole}>JARVIS</div>
+      <div className={styles.messageHeader}>
+        <span className={styles.messageRole}>JARVIS</span>
+      </div>
       <div className={styles.messageContent}>
-        {content || <span className={styles.thinkingDots} aria-label="Thinking">···</span>}
+        {content
+          ? <MarkdownContent content={content} />
+          : <span className={styles.thinkingDots} aria-label="Thinking">···</span>
+        }
       </div>
     </div>
+  )
+}
+
+// ── Conversation title / rename ───────────────────────────────────────────────
+
+function ConvTitle({
+  title,
+  convId,
+  onRename,
+}: {
+  title: string | null
+  convId: number
+  onRename: (newTitle: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(title ?? '')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select()
+  }, [editing])
+
+  const commit = () => {
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== title) onRename(trimmed)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        className={styles.titleInput}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') setEditing(false)
+        }}
+        aria-label="Rename conversation"
+      />
+    )
+  }
+
+  return (
+    <button
+      className={styles.titleBtn}
+      onClick={() => { setDraft(title ?? ''); setEditing(true) }}
+      title="Click to rename"
+      aria-label={`Conversation: ${title ?? `#${convId}`}. Click to rename.`}
+    >
+      {title ?? `conv #${convId}`}
+      <span className={styles.editIcon} aria-hidden="true">✎</span>
+    </button>
   )
 }
 
@@ -144,15 +303,18 @@ export function ChatPage() {
     pendingConfirmation,
     lastPlanSteps,
     lastIntent,
+    lastCitations,
+    lastTokenUsage,
     startStreaming,
     appendStreamChunk,
     finishStreaming,
     setError,
     clearError,
-    setActiveConversation,
     setJarvisState,
     setPendingConfirmation,
     setLastPlanSteps,
+    setLastCitations,
+    setLastTokenUsage,
   } = useChatStore()
 
   const [input, setInput] = useState('')
@@ -163,7 +325,6 @@ export function ChatPage() {
   const stt = useSpeechRecognition()
   const tts = useSpeechSynthesis()
 
-  // Fetch voice settings once
   const { data: voiceSettings } = useQuery({
     queryKey: ['voice-settings'],
     queryFn: () => voiceApi.settings(),
@@ -173,25 +334,40 @@ export function ChatPage() {
   const voiceEnabled = voiceSettings?.enabled ?? false
   const autoSpeak = voiceSettings?.auto_speak ?? false
 
-  // When STT produces a transcript, fill the input and auto-send
+  // Max context tokens from env or sensible default
+  const maxContextTokens = parseInt(import.meta.env.VITE_MAX_CONTEXT_TOKENS ?? '8192', 10)
+
   useEffect(() => {
     if (!stt.transcript) return
     setInput(stt.transcript)
     stt.reset()
   }, [stt.transcript, stt])
 
-  // Load conversation messages
-  const { data: conversation } = useQuery({
+  const { data: conversation, refetch: refetchConversation } = useQuery({
     queryKey: ['conversation', activeConversationId],
     queryFn: () =>
       activeConversationId ? conversationsApi.get(activeConversationId) : null,
     enabled: activeConversationId != null,
   })
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [conversation?.messages, streamingContent, pendingConfirmation])
+
+  const handleCopy = useCallback((text: string) => {
+    void navigator.clipboard.writeText(text)
+  }, [])
+
+  const handleRename = async (newTitle: string) => {
+    if (!activeConversationId) return
+    try {
+      await conversationsApi.rename(activeConversationId, newTitle)
+      await queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      await refetchConversation()
+    } catch {
+      // non-critical — title stays as-is
+    }
+  }
 
   const handleSend = async () => {
     const message = input.trim()
@@ -242,9 +418,14 @@ export function ChatPage() {
       case 'RESPONSE_COMPLETE': {
         const p = event.payload as ResponseCompletePayload
         onComplete(p.conversation_id)
+        if (p.citations?.length) setLastCitations(p.citations)
+        setLastTokenUsage({
+          input: p.input_tokens,
+          output: p.output_tokens,
+          context: p.context_tokens,
+        })
         if (p.plan_steps?.length) {
           setLastPlanSteps(p.plan_steps, p.intent ?? 'GENERAL_CHAT')
-          // Wire confirmation panel: find first step needing approval
           const pendingStep = p.plan_steps.find(
             (s) => s.requires_confirmation && s.confirmation_id
           )
@@ -254,9 +435,7 @@ export function ChatPage() {
               .catch(() => { /* confirmation may have expired */ })
           }
         }
-        if (autoSpeak && tts.supported) {
-          tts.speak(p.content)
-        }
+        if (autoSpeak && tts.supported) tts.speak(p.content)
         break
       }
       case 'ERROR': {
@@ -267,15 +446,13 @@ export function ChatPage() {
     }
   }
 
-  // ── Confirmation handlers ─────────────────────────────────────────────────
-
   const handleApprove = async () => {
     if (!pendingConfirmation) return
     try {
       await toolsApi.confirm({
         confirmation_id: pendingConfirmation.confirmation_id,
         tool_name: pendingConfirmation.tool_name,
-        parameters: {},  // backend uses server-stored parameters, not client-supplied
+        parameters: {},
       })
       setPendingConfirmation(null)
     } catch (e) {
@@ -304,7 +481,22 @@ export function ChatPage() {
 
   return (
     <div className={styles.page}>
-      {/* Conversation history */}
+      {/* Conversation header */}
+      {activeConversationId && (
+        <div className={styles.convHeader}>
+          <ConvTitle
+            title={conversation?.title ?? null}
+            convId={activeConversationId}
+            onRename={handleRename}
+          />
+          <ContextBar
+            contextTokens={lastTokenUsage?.context ?? null}
+            maxTokens={maxContextTokens}
+          />
+        </div>
+      )}
+
+      {/* Messages */}
       <div className={styles.messages} role="log" aria-live="polite" aria-label="Conversation">
         {messages.length === 0 && !isStreaming && (
           <div className={styles.empty}>
@@ -314,12 +506,16 @@ export function ChatPage() {
         )}
 
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
+          <MessageBubble key={msg.id} message={msg} onCopy={handleCopy} />
         ))}
 
         {isStreaming && <StreamingBubble content={streamingContent} />}
 
-        {/* Tool approval panel */}
+        {/* Citation cards — shown after last assistant turn */}
+        {!isStreaming && lastCitations.length > 0 && (
+          <CitationCards citations={lastCitations} />
+        )}
+
         {pendingConfirmation && (
           <ToolApprovalPanel
             confirmation={pendingConfirmation}
@@ -390,9 +586,10 @@ export function ChatPage() {
           <span className={styles.stateLabel} aria-live="polite">
             {jarvisState !== 'IDLE' && jarvisState}
           </span>
-          {activeConversationId && (
-            <span className={styles.convId}>
-              conv #{activeConversationId}
+          {lastTokenUsage && (
+            <span className={styles.tokenSummary}>
+              {lastTokenUsage.input != null && `↑${lastTokenUsage.input}`}
+              {lastTokenUsage.output != null && ` ↓${lastTokenUsage.output}`}
             </span>
           )}
         </div>
