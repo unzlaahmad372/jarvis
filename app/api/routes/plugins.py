@@ -80,12 +80,20 @@ def _scan_plugins(plugins_dir: Path) -> list[PluginOut]:
 @router.get("", response_model=list[PluginOut])
 async def list_plugins() -> list[PluginOut]:
     settings = get_settings()
+    if not settings.enable_plugins:
+        return []
     return _scan_plugins(settings.data_dir / "plugins")
 
 
 @router.post("/reload", response_model=list[PluginOut])
 async def reload_plugins() -> list[PluginOut]:
     settings = get_settings()
+    if not settings.enable_plugins:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=403,
+            detail="Plugin system is disabled. Set JARVIS_ENABLE_PLUGINS=true to enable.",
+        )
     # Remove previously loaded plugin modules so they reload fresh
     to_remove = [k for k in sys.modules if k.startswith("jarvis_plugin_")]
     for k in to_remove:

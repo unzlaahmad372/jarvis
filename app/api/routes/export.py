@@ -91,20 +91,21 @@ async def export_all_conversations(
     session: DbSession,
     fmt: str = Query("json", alias="format", pattern="^(json)$"),
 ) -> Response:
+    from sqlalchemy.orm import selectinload
     convs = (await session.execute(
-        select(Conversation).order_by(Conversation.updated_at.desc())
+        select(Conversation)
+        .options(selectinload(Conversation.messages))
+        .order_by(Conversation.updated_at.desc())
     )).scalars().all()
 
-    result = []
-    for conv in convs:
-        messages = (await session.execute(
-            select(Message).where(Message.conversation_id == conv.id).order_by(Message.sequence)
-        )).scalars().all()
-        result.append({
+    result = [
+        {
             "id": conv.id, "title": conv.title,
             "created_at": conv.created_at.isoformat(),
-            "messages": [{"role": m.role, "content": m.content} for m in messages],
-        })
+            "messages": [{"role": m.role, "content": m.content} for m in conv.messages],
+        }
+        for conv in convs
+    ]
 
     return Response(content=json.dumps(result, indent=2), media_type="application/json",
                     headers={"Content-Disposition": 'attachment; filename="jarvis-export.json"'})

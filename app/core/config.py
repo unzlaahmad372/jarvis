@@ -141,6 +141,7 @@ class Settings(BaseSettings):
     enable_remote_access: bool = False
     enable_always_listening: bool = False
     inbox_watcher_enabled: bool = False
+    enable_plugins: bool = False  # Phase 24 — must be explicitly opted in
 
     @field_validator("host")
     @classmethod

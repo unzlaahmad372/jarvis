@@ -14,6 +14,7 @@ data/indexes/
 data/cache/
 data/inbox/
 data/documents/
+data/plugins/
 # Keep directory structure
 !data/**/.gitkeep
 

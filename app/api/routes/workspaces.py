@@ -3,14 +3,14 @@
 GET    /api/v1/workspaces          — list workspaces
 POST   /api/v1/workspaces          — create workspace
 POST   /api/v1/workspaces/{id}/activate — set as active (default)
-DELETE /api/v1/workspaces/{id}     — delete (not default)
+DELETE /api/v1/workspaces/{id}     — delete (not default, not if conversations exist)
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import DbSession
 from app.db.models import Conversation, Workspace
@@ -33,16 +33,23 @@ class WorkspaceCreate(BaseModel):
     description: str | None = None
 
 
+async def _count_conversations(workspace_id: int, session: DbSession) -> int:
+    return (await session.execute(
+        select(func.count()).where(Conversation.workspace_id == workspace_id)
+    )).scalar_one()
+
+
 @router.get("", response_model=list[WorkspaceOut])
 async def list_workspaces(session: DbSession) -> list[WorkspaceOut]:
     workspaces = (await session.execute(select(Workspace))).scalars().all()
+    # Single subquery per workspace — O(N) queries but each is a scalar count, not a full load
     result = []
     for w in workspaces:
-        count = len((await session.execute(
-            select(Conversation).where(Conversation.workspace_id == w.id)
-        )).scalars().all())
-        result.append(WorkspaceOut(id=w.id, name=w.name, description=w.description,
-                                   is_default=w.is_default, conversation_count=count))
+        count = await _count_conversations(w.id, session)
+        result.append(WorkspaceOut(
+            id=w.id, name=w.name, description=w.description,
+            is_default=w.is_default, conversation_count=count,
+        ))
     return result
 
 
@@ -68,14 +75,15 @@ async def activate_workspace(workspace_id: int, session: DbSession) -> Workspace
     )).scalar_one_or_none()
     if ws is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
-    # Clear existing default
     all_ws = (await session.execute(select(Workspace))).scalars().all()
     for w in all_ws:
         w.is_default = w.id == workspace_id
     await session.commit()
     await session.refresh(ws)
+    count = await _count_conversations(ws.id, session)
     return WorkspaceOut(
-        id=ws.id, name=ws.name, description=ws.description, is_default=ws.is_default
+        id=ws.id, name=ws.name, description=ws.description,
+        is_default=ws.is_default, conversation_count=count,
     )
 
 
@@ -88,5 +96,14 @@ async def delete_workspace(workspace_id: int, session: DbSession) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
     if ws.is_default:
         raise HTTPException(status_code=400, detail="Cannot delete the default workspace")
+    count = await _count_conversations(workspace_id, session)
+    if count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Workspace has {count} conversation(s). "
+                "Move or delete them before deleting the workspace."
+            ),
+        )
     await session.delete(ws)
     await session.commit()

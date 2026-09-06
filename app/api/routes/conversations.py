@@ -33,9 +33,9 @@ async def list_conversations(session: DbSession) -> list[ConversationOut]:
 
 @router.get("/search", summary="Search conversations by title or message content")
 async def search_conversations(
+    session: DbSession,
     q: str = Query(..., min_length=1, max_length=200),
     limit: int = Query(20, ge=1, le=100),
-    session: DbSession = None,  # type: ignore[assignment]
 ) -> list[ConversationOut]:
     pattern = f"%{q}%"
     result = await session.execute(
