@@ -131,6 +131,9 @@ class Settings(BaseSettings):
     # ── MCP (Phase 13) ──────────────────────────────────────────────────────
     mcp_servers: str = ""  # JSON array of MCP server configs
 
+    # ── Observability / OpenTelemetry (Phase 20) ──────────────────────────────
+    otel_endpoint: str | None = None  # OTLP gRPC endpoint, e.g. http://localhost:4317
+
     # ── Feature flags ────────────────────────────────────────────────────────
     enable_cloud: bool = False
     enable_shell: bool = False

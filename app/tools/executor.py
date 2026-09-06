@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.brain.confirmation import get_confirmation_store
 from app.core.config import Settings
 from app.core.logging import get_logger
+from app.core.telemetry import span
 from app.db.models import ToolExecution
 from app.tools.base import (
     PolicyDecision,
@@ -31,6 +32,14 @@ class ToolExecutor:
         self._max_output = settings.max_tool_output_size
 
     async def execute(
+        self,
+        request: ToolRequest,
+        session: AsyncSession,
+    ) -> tuple[ToolResult, PolicyDecision]:
+        with span("tool.execute", {"tool.name": request.tool_name}):
+            return await self._execute_inner(request, session)
+
+    async def _execute_inner(
         self,
         request: ToolRequest,
         session: AsyncSession,
@@ -95,7 +104,8 @@ class ToolExecutor:
         # Execute
         start = datetime.now(UTC)
         try:
-            result = await tool.execute(request.parameters)
+            with span("tool.run", {"tool.name": request.tool_name}):
+                result = await tool.execute(request.parameters)
         except Exception as exc:
             duration_ms = int((datetime.now(UTC) - start).total_seconds() * 1000)
             result = ToolResult(

@@ -13,6 +13,7 @@ from collections.abc import AsyncGenerator, Callable, Coroutine
 from typing import Any, TypeVar
 
 from app.core.logging import get_logger
+from app.core.telemetry import span
 
 logger = get_logger(__name__)
 
@@ -58,16 +59,7 @@ class InferenceManager:
         *,
         request_id: str = "unknown",
     ) -> T:
-        """Execute a coroutine under concurrency and timeout constraints.
-
-        Args:
-            coro_fn: Zero-argument async callable that performs the LLM call.
-            request_id: Correlation ID for logging.
-
-        Raises:
-            InferenceQueueFullError: Queue is at capacity.
-            asyncio.TimeoutError: Request exceeded the configured timeout.
-        """
+        """Execute a coroutine under concurrency and timeout constraints."""
         if self._queued >= self._max_queue:
             logger.warning(
                 "inference_queue_full",
@@ -89,7 +81,8 @@ class InferenceManager:
                 acquired = True
                 self._queued -= 1
                 logger.debug("inference_started", request_id=request_id)
-                result: T = await asyncio.wait_for(coro_fn(), timeout=self._timeout)
+                with span("inference.run", {"inference.request_id": request_id}):
+                    result: T = await asyncio.wait_for(coro_fn(), timeout=self._timeout)
                 logger.debug("inference_completed", request_id=request_id)
                 return result
         except TimeoutError:
@@ -100,7 +93,6 @@ class InferenceManager:
             )
             raise
         except Exception:
-            # Only decrement if we never acquired the semaphore (still queued)
             if not acquired and self._queued > 0:
                 self._queued -= 1
             raise

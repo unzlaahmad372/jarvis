@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator
 import httpx
 
 from app.core.logging import get_logger
+from app.core.telemetry import span
 from app.llm.base import LLMProvider, LLMResponse, ModelCapabilities
 
 logger = get_logger(__name__)
@@ -36,6 +37,10 @@ class OllamaProvider(LLMProvider):
 
     async def complete(self, prompt: str, system: str | None = None) -> LLMResponse:
         """Send a non-streaming completion request to Ollama."""
+        with span("llm.complete", {"llm.model": self._model, "llm.provider": "ollama"}):
+            return await self._complete_inner(prompt, system)
+
+    async def _complete_inner(self, prompt: str, system: str | None) -> LLMResponse:
         payload: dict[str, object] = {
             "model": self._model,
             "prompt": prompt,

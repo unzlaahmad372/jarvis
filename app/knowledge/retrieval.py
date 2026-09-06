@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from app.brain.context_builder import ContextSlot, estimate_tokens
 from app.core.logging import get_logger
+from app.core.telemetry import span
 from app.knowledge.embeddings import EmbeddingProvider
 from app.knowledge.vector_store import VectorSearchResult, VectorStore
 
@@ -61,6 +62,20 @@ async def retrieve(
     rag_token_budget: int = 3072,
 ) -> RetrievalResult:
     """Embed the query, search the vector store, return context slot + citations."""
+    with span("rag.retrieve", {"rag.top_k": top_k, "rag.token_budget": rag_token_budget}):
+        return await _retrieve_inner(
+            query, embedding_provider, vector_store, top_k, score_threshold, rag_token_budget
+        )
+
+
+async def _retrieve_inner(
+    query: str,
+    embedding_provider: EmbeddingProvider,
+    vector_store: VectorStore,
+    top_k: int,
+    score_threshold: float,
+    rag_token_budget: int,
+) -> RetrievalResult:
     try:
         embed_result = await embedding_provider.embed([query])
         if not embed_result.vectors:
