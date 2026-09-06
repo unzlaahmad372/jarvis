@@ -340,7 +340,6 @@ export function ChatPage() {
   })
 
   const voiceEnabled = voiceSettings?.enabled ?? false
-  const autoSpeak = voiceSettings?.auto_speak ?? false
 
   const handleWake = useCallback(() => {
     if (isStreaming) return
@@ -348,16 +347,48 @@ export function ChatPage() {
     stt.start()
   }, [isStreaming, setJarvisState, stt])
 
-  useWakeWord(handleWake, voiceEnabled && wakeWordEnabled)
+  useWakeWord(handleWake, voiceEnabled && wakeWordEnabled, stt.listening)
 
   // Max context tokens from env or sensible default
   const maxContextTokens = parseInt(import.meta.env.VITE_MAX_CONTEXT_TOKENS ?? '8192', 10)
 
+  // Auto-send after STT finishes (wake word flow) and resume wake listener
   useEffect(() => {
     if (!stt.transcript) return
-    setInput(stt.transcript)
+    const text = stt.transcript
     stt.reset()
-  }, [stt.transcript, stt])
+    setInput(text)
+    if (wakeWordEnabled && voiceEnabled) {
+      // Small delay so input state settles, then auto-send
+      setTimeout(() => {
+        setInput('')
+        void (async () => {
+          if (!text.trim() || isStreaming) return
+          startStreaming()
+          abortRef.current = new AbortController()
+          try {
+            let finalConversationId = activeConversationId
+            for await (const event of chatApi.stream(
+              { message: text, conversation_id: activeConversationId ?? undefined },
+              abortRef.current.signal,
+            )) {
+              handleSSEEvent(event, (id) => { finalConversationId = id })
+            }
+            if (finalConversationId != null) {
+              finishStreaming(finalConversationId)
+              await queryClient.invalidateQueries({ queryKey: ['conversation', finalConversationId] })
+              await queryClient.invalidateQueries({ queryKey: ['conversations'] })
+            }
+          } catch (err) {
+            if (err instanceof Error && err.name !== 'AbortError')
+              setError(err instanceof Error ? err.message : 'Unknown error')
+            else setJarvisState('IDLE')
+          }
+        })()
+      }, 100)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stt.transcript])
 
   const { data: conversation, refetch: refetchConversation } = useQuery({
     queryKey: ['conversation', activeConversationId],
@@ -451,7 +482,7 @@ export function ChatPage() {
               .catch(() => { /* confirmation may have expired */ })
           }
         }
-        if (autoSpeak && tts.supported) tts.speak(p.content)
+        if (voiceEnabled && tts.supported) tts.speak(p.content)
         break
       }
       case 'ERROR': {

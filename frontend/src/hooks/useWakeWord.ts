@@ -16,7 +16,7 @@ interface UseWakeWordReturn {
   disable: () => void
 }
 
-export function useWakeWord(onWake: () => void, enabled: boolean): UseWakeWordReturn {
+export function useWakeWord(onWake: () => void, enabled: boolean, paused = false): UseWakeWordReturn {
   const SpeechRecognitionCtor =
     typeof window !== 'undefined'
       ? window.SpeechRecognition ?? window.webkitSpeechRecognition
@@ -76,10 +76,10 @@ export function useWakeWord(onWake: () => void, enabled: boolean): UseWakeWordRe
   useEffect(() => { startRef.current = start }, [start])
 
   useEffect(() => {
-    if (enabled && supported) start()
+    if (enabled && supported && !paused) start()
     else stop()
     return stop
-  }, [enabled, supported, start, stop])
+  }, [enabled, supported, paused, start, stop])
 
   return { supported, active, enable: start, disable: stop }
 }
