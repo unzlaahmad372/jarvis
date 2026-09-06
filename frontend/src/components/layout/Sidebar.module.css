@@ -4,6 +4,8 @@
   border-right: 1px solid var(--hud-line);
   flex-shrink: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .navList {
@@ -52,4 +54,112 @@
 
 .label {
   font-family: var(--hud-font-ui);
+}
+
+/* ── Conversation panel ──────────────────────────────────────────────────── */
+
+.convPanel {
+  border-top: 1px solid var(--hud-line);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--hud-line);
+  flex-shrink: 0;
+}
+
+.searchIcon {
+  color: var(--hud-text-dim);
+  flex-shrink: 0;
+  display: flex;
+}
+
+.searchInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--hud-text-primary);
+  font-family: var(--hud-font-ui);
+  font-size: var(--hud-font-size-xs);
+  min-width: 0;
+}
+
+.searchInput::placeholder {
+  color: var(--hud-text-dim);
+}
+
+.searchClear {
+  background: none;
+  border: none;
+  color: var(--hud-text-dim);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.searchClear:hover { color: var(--hud-text-secondary); }
+
+.convList {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.groupLabel {
+  font-family: var(--hud-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--hud-text-dim);
+  padding: 6px 12px 2px;
+  text-transform: uppercase;
+}
+
+.convItem {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--hud-text-secondary);
+  font-size: var(--hud-font-size-xs);
+  transition: background var(--hud-motion-fast), color var(--hud-motion-fast);
+  border-left: 2px solid transparent;
+}
+
+.convItem:hover {
+  background: var(--hud-surface-hover);
+  color: var(--hud-text-primary);
+}
+
+.convActive {
+  color: var(--hud-accent) !important;
+  border-left-color: var(--hud-accent);
+  background: var(--hud-surface-elevated);
+}
+
+.convTitle {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--hud-font-ui);
+}
+
+.convEmpty {
+  padding: 12px;
+  font-size: var(--hud-font-size-xs);
+  color: var(--hud-text-dim);
+  text-align: center;
 }

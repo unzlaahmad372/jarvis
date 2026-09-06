@@ -68,6 +68,7 @@ export const healthApi = {
 
 export const conversationsApi = {
   list: () => request<ConversationOut[]>('/api/v1/conversations'),
+  search: (q: string) => request<ConversationOut[]>(`/api/v1/conversations/search?q=${encodeURIComponent(q)}`),
   get: (id: number) => request<ConversationDetail>(`/api/v1/conversations/${id}`),
   rename: (id: number, title: string) =>
     request<ConversationOut>(`/api/v1/conversations/${id}`, {

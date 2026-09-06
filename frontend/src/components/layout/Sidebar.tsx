@@ -1,7 +1,11 @@
-import { NavLink } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { conversationsApi } from '@/services/api/client'
+import { useChatStore } from '@/app/stores/chatStore'
+import type { ConversationOut } from '@/types/api'
 import styles from './Sidebar.module.css'
 
-// Minimal inline SVG icons — no external dependency
 const ICONS: Record<string, JSX.Element> = {
   chat: (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -111,21 +115,133 @@ const ICONS: Record<string, JSX.Element> = {
 }
 
 const NAV_ITEMS = [
-  { to: '/chat',        label: 'Chat',        icon: 'chat' },
-  { to: '/documents',   label: 'Documents',   icon: 'documents' },
-  { to: '/memory',      label: 'Memory',      icon: 'memory' },
-  { to: '/tools',       label: 'Tools',       icon: 'tools' },
-  { to: '/kubernetes',  label: 'Kubernetes',  icon: 'kubernetes' },
-  { to: '/operations',  label: 'Operations',  icon: 'operations' },
-  { to: '/automations', label: 'Automations', icon: 'automations' },
-  { to: '/backup',      label: 'Backup',      icon: 'backup' },
-  { to: '/auth',        label: 'Devices',     icon: 'devices' },
-  { to: '/audit',       label: 'Audit',       icon: 'audit' },
-  { to: '/mcp',         label: 'MCP',         icon: 'mcp' },
-  { to: '/observability', label: 'Observe',   icon: 'observe' },
-  { to: '/system',      label: 'System',      icon: 'system' },
-  { to: '/settings',    label: 'Settings',    icon: 'settings' },
+  { to: '/chat',          label: 'Chat',        icon: 'chat' },
+  { to: '/documents',     label: 'Documents',   icon: 'documents' },
+  { to: '/memory',        label: 'Memory',      icon: 'memory' },
+  { to: '/tools',         label: 'Tools',       icon: 'tools' },
+  { to: '/kubernetes',    label: 'Kubernetes',  icon: 'kubernetes' },
+  { to: '/operations',    label: 'Operations',  icon: 'operations' },
+  { to: '/automations',   label: 'Automations', icon: 'automations' },
+  { to: '/backup',        label: 'Backup',      icon: 'backup' },
+  { to: '/auth',          label: 'Devices',     icon: 'devices' },
+  { to: '/audit',         label: 'Audit',       icon: 'audit' },
+  { to: '/mcp',           label: 'MCP',         icon: 'mcp' },
+  { to: '/observability', label: 'Observe',     icon: 'observe' },
+  { to: '/system',        label: 'System',      icon: 'system' },
+  { to: '/settings',      label: 'Settings',    icon: 'settings' },
 ] as const
+
+// ── Date grouping ─────────────────────────────────────────────────────────────
+
+function getGroup(dateStr: string): string {
+  const now = new Date()
+  const d = new Date(dateStr)
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000)
+  if (diffDays < 1) return 'Today'
+  if (diffDays < 2) return 'Yesterday'
+  if (diffDays < 7) return 'This Week'
+  return 'Older'
+}
+
+const GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'Older']
+
+function groupConversations(convs: ConversationOut[]): [string, ConversationOut[]][] {
+  const map = new Map<string, ConversationOut[]>()
+  for (const c of convs) {
+    const g = getGroup(c.updated_at)
+    if (!map.has(g)) map.set(g, [])
+    map.get(g)!.push(c)
+  }
+  return GROUP_ORDER.filter((g) => map.has(g)).map((g) => [g, map.get(g)!])
+}
+
+// ── Conversation panel ────────────────────────────────────────────────────────
+
+function ConversationPanel() {
+  const navigate = useNavigate()
+  const { activeConversationId, setActiveConversation } = useChatStore()
+  const [query, setQuery] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setDebouncedQ(query.trim()), 300)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [query])
+
+  const { data: allConvs = [] } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: () => conversationsApi.list(),
+    staleTime: 10_000,
+  })
+
+  const { data: searchResults } = useQuery({
+    queryKey: ['conversations-search', debouncedQ],
+    queryFn: () => conversationsApi.search(debouncedQ),
+    enabled: debouncedQ.length > 0,
+    staleTime: 5_000,
+  })
+
+  const convs = debouncedQ ? (searchResults ?? []) : allConvs
+  const groups = groupConversations(convs)
+
+  const handleSelect = (id: number) => {
+    setActiveConversation(id)
+    navigate('/chat')
+  }
+
+  return (
+    <div className={styles.convPanel}>
+      <div className={styles.searchRow}>
+        <span className={styles.searchIcon} aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" width="13" height="13">
+            <circle cx="6.5" cy="6.5" r="4.5" />
+            <line x1="10" y1="10" x2="14" y2="14" strokeLinecap="round" />
+          </svg>
+        </span>
+        <input
+          className={styles.searchInput}
+          type="search"
+          placeholder="Search…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search conversations"
+        />
+        {query && (
+          <button className={styles.searchClear} onClick={() => setQuery('')} aria-label="Clear search">✕</button>
+        )}
+      </div>
+
+      <div className={styles.convList}>
+        {groups.length === 0 && (
+          <div className={styles.convEmpty}>
+            {debouncedQ ? 'No results' : 'No conversations yet'}
+          </div>
+        )}
+        {groups.map(([group, items]) => (
+          <div key={group}>
+            <div className={styles.groupLabel}>{group}</div>
+            {items.map((c) => (
+              <button
+                key={c.id}
+                className={`${styles.convItem} ${c.id === activeConversationId ? styles.convActive : ''}`}
+                onClick={() => handleSelect(c.id)}
+                title={c.title ?? `Conversation #${c.id}`}
+              >
+                <span className={styles.convTitle}>
+                  {c.title ?? `conv #${c.id}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
   return (
@@ -147,6 +263,8 @@ export function Sidebar() {
           </li>
         ))}
       </ul>
+
+      <ConversationPanel />
     </nav>
   )
 }

@@ -1,15 +1,16 @@
 """Conversation management endpoints.
 
 GET   /api/v1/conversations          — list all conversations
+GET   /api/v1/conversations/search   — search by title or message content
 GET   /api/v1/conversations/{id}     — get conversation with messages
 PATCH /api/v1/conversations/{id}     — rename conversation
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.api.deps import DbSession
 from app.api.schemas.chat import ConversationDetail, ConversationOut, MessageOut, TokenUsage
@@ -27,8 +28,32 @@ async def list_conversations(session: DbSession) -> list[ConversationOut]:
     result = await session.execute(
         select(Conversation).order_by(Conversation.updated_at.desc())
     )
-    conversations = result.scalars().all()
-    return [ConversationOut.model_validate(c) for c in conversations]
+    return [ConversationOut.model_validate(c) for c in result.scalars().all()]
+
+
+@router.get("/search", summary="Search conversations by title or message content")
+async def search_conversations(
+    q: str = Query(..., min_length=1, max_length=200),
+    limit: int = Query(20, ge=1, le=100),
+    session: DbSession = None,  # type: ignore[assignment]
+) -> list[ConversationOut]:
+    pattern = f"%{q}%"
+    result = await session.execute(
+        select(Conversation)
+        .where(
+            or_(
+                Conversation.title.ilike(pattern),
+                Conversation.id.in_(
+                    select(Message.conversation_id)
+                    .where(Message.content.ilike(pattern))
+                    .distinct()
+                ),
+            )
+        )
+        .order_by(Conversation.updated_at.desc())
+        .limit(limit)
+    )
+    return [ConversationOut.model_validate(c) for c in result.scalars().all()]
 
 
 @router.patch("/{conversation_id}", summary="Rename conversation", response_model=ConversationOut)
