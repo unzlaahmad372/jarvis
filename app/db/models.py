@@ -76,6 +76,7 @@ class Conversation(Base):
         Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
     title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    tags: Mapped[str | None] = mapped_column(String(500), nullable=True)  # comma-separated
     # Token accounting totals (updated incrementally)
     total_input_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_output_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

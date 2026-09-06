@@ -5,6 +5,7 @@ GET   /api/v1/conversations/search   — search by title or message content
 GET   /api/v1/conversations/{id}     — get conversation with messages
 PATCH /api/v1/conversations/{id}     — rename conversation
 POST  /api/v1/conversations/{id}/summarize — generate on-demand summary (Phase 29)
+POST  /api/v1/conversations/{id}/tags     — generate topic tags (Phase 30)
 """
 
 from __future__ import annotations
@@ -134,6 +135,11 @@ class SummaryOut(BaseModel):
     summary: str
 
 
+class TagsOut(BaseModel):
+    conversation_id: int
+    tags: list[str]
+
+
 @router.post(
     "/{conversation_id}/summarize",
     summary="Generate an on-demand summary of a conversation",
@@ -172,3 +178,42 @@ async def summarize_conversation(
         message_count=len(messages),
         summary=summary,
     )
+
+
+@router.post(
+    "/{conversation_id}/tags",
+    summary="Generate topic tags for a conversation",
+    response_model=TagsOut,
+)
+async def tag_conversation(
+    conversation_id: int,
+    session: DbSession,
+    request: Request,
+) -> TagsOut:
+    """Use the LLM to produce topic tags and persist them on the conversation."""
+    from app.brain.orchestrator import ChatOrchestrator
+    from app.brain.tagger import generate_tags
+
+    conv = (await session.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )).scalar_one_or_none()
+    if conv is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Conversation {conversation_id} not found",
+        )
+
+    messages = (await session.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.sequence)
+    )).scalars().all()
+
+    transcript = "\n".join(f"{m.role}: {m.content}" for m in messages)
+    orchestrator: ChatOrchestrator = get_orchestrator(request)  # type: ignore[assignment]
+    tags = await generate_tags(transcript, orchestrator._llm)  # noqa: SLF001
+
+    conv.tags = ", ".join(tags)
+    await session.commit()
+
+    return TagsOut(conversation_id=conv.id, tags=tags)

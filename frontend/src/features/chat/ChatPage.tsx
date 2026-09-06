@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 import { JarvisCore } from '@/components/hud/JarvisCore'
 import type { CoreState } from '@/components/hud/JarvisCore'
@@ -323,6 +323,7 @@ export function ChatPage() {
   } = useChatStore()
 
   const [input, setInput] = useState('')
+  const [summaryPanel, setSummaryPanel] = useState<string | null>(null)
   const [_visionResult, setVisionResult] = useState<string | null>(null)
   const [visionLoading, setVisionLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -409,6 +410,11 @@ export function ChatPage() {
   const handleCopy = useCallback((text: string) => {
     void navigator.clipboard.writeText(text)
   }, [])
+
+  const summarizeMutation = useMutation({
+    mutationFn: () => conversationsApi.summarize(activeConversationId!),
+    onSuccess: (data) => setSummaryPanel(data.summary),
+  })
 
   const handleRename = async (newTitle: string) => {
     if (!activeConversationId) return
@@ -556,17 +562,40 @@ export function ChatPage() {
     <div className={styles.page}>
       {/* Conversation header */}
       {activeConversationId && (
-        <div className={styles.convHeader}>
-          <ConvTitle
-            title={conversation?.title ?? null}
-            convId={activeConversationId}
-            onRename={handleRename}
-          />
-          <ContextBar
-            contextTokens={lastTokenUsage?.context ?? null}
-            maxTokens={maxContextTokens}
-          />
-        </div>
+        <>
+          <div className={styles.convHeader}>
+            <ConvTitle
+              title={conversation?.title ?? null}
+              convId={activeConversationId}
+              onRename={handleRename}
+            />
+            <div className={styles.convHeaderRight}>
+              <button
+                className={styles.summarizeBtn}
+                onClick={() => summarizeMutation.mutate()}
+                disabled={summarizeMutation.isPending || isStreaming}
+                title="Summarize conversation"
+                aria-label="Summarize conversation"
+              >
+                {summarizeMutation.isPending ? '⏳' : '∑'}
+              </button>
+              <ContextBar
+                contextTokens={lastTokenUsage?.context ?? null}
+                maxTokens={maxContextTokens}
+              />
+            </div>
+          </div>
+          {summaryPanel && (
+            <div className={styles.summaryPanel} role="region" aria-label="Conversation summary">
+              <span className={styles.summaryText}>{summaryPanel}</span>
+              <button
+                className={styles.summaryDismiss}
+                onClick={() => setSummaryPanel(null)}
+                aria-label="Dismiss summary"
+              >✕</button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Messages */}

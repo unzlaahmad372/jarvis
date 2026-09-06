@@ -262,6 +262,13 @@ function ConversationPanel() {
                 <span className={styles.convTitle}>
                   {c.title ?? `conv #${c.id}`}
                 </span>
+                {c.tags.length > 0 && (
+                  <span className={styles.tagRow}>
+                    {c.tags.map((t) => (
+                      <span key={t} className={styles.tagChip}>{t}</span>
+                    ))}
+                  </span>
+                )}
               </button>
             ))}
           </div>

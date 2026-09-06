@@ -167,6 +167,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # create_all is used here for Phase 0 simplicity)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Phase 30 — add tags column to existing databases (idempotent)
+        try:
+            from sqlalchemy import text
+            await conn.execute(text("ALTER TABLE conversations ADD COLUMN tags VARCHAR(500)"))
+        except Exception:
+            pass  # column already exists
 
     await _seed_default_workspace()
 

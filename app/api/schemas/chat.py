@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ── Requests ──────────────────────────────────────────────────────────────────
 
@@ -54,12 +54,22 @@ class ConversationOut(BaseModel):
     id: int
     workspace_id: int
     title: str | None = None
+    tags: list[str] = []
     total_input_tokens: int
     total_output_tokens: int
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _parse_tags(cls, v: object) -> list[str]:
+        if isinstance(v, str):
+            return [t.strip() for t in v.split(",") if t.strip()]
+        if v is None:
+            return []
+        return v  # type: ignore[return-value]
 
 
 class ConversationDetail(ConversationOut):

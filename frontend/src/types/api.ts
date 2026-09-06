@@ -23,6 +23,7 @@ export interface ConversationOut {
   id: number
   workspace_id: number
   title: string | null
+  tags: string[]
   total_input_tokens: number
   total_output_tokens: number
   created_at: string
@@ -230,6 +231,11 @@ export interface SettingsOut {
   conversation_retention_days: number
   tool_log_retention_days: number
   log_level: string
+}
+
+export interface TagsOut {
+  conversation_id: number
+  tags: string[]
 }
 
 export interface SummaryOut {

@@ -37,6 +37,8 @@ import type {
   SettingsOut,
   SpinnakerExecutionsOut,
   SSEEvent,
+  SummaryOut,
+  TagsOut,
   TokenResponse,
   ToolExecuteRequest,
   ToolExecuteResponse,
@@ -77,7 +79,9 @@ export const conversationsApi = {
       body: JSON.stringify({ title }),
     }),
   summarize: (id: number) =>
-    request<import('@/types/api').SummaryOut>(`/api/v1/conversations/${id}/summarize`, { method: 'POST' }),
+    request<SummaryOut>(`/api/v1/conversations/${id}/summarize`, { method: 'POST' }),
+  tag: (id: number) =>
+    request<TagsOut>(`/api/v1/conversations/${id}/tags`, { method: 'POST' }),
 }
 
 // ── Documents ────────────────────────────────────────────────────────────────

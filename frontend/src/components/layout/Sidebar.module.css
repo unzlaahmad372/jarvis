@@ -157,6 +157,25 @@
   font-family: var(--hud-font-ui);
 }
 
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.tagChip {
+  font-family: var(--hud-font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: var(--hud-accent-muted);
+  background: rgba(0, 255, 170, 0.06);
+  border: 1px solid rgba(0, 255, 170, 0.15);
+  border-radius: 3px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
 .convEmpty {
   padding: 12px;
   font-size: var(--hud-font-size-xs);
