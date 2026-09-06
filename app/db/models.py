@@ -77,6 +77,7 @@ class Conversation(Base):
     )
     title: Mapped[str | None] = mapped_column(String(500), nullable=True)
     tags: Mapped[str | None] = mapped_column(String(500), nullable=True)  # comma-separated
+    pinned: Mapped[bool] = mapped_column(default=False, nullable=False, server_default="0")
     # Token accounting totals (updated incrementally)
     total_input_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_output_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

@@ -176,13 +176,18 @@ function getGroup(dateStr: string): string {
 const GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'Older']
 
 function groupConversations(convs: ConversationOut[]): [string, ConversationOut[]][] {
+  const pinned = convs.filter((c) => c.pinned)
+  const unpinned = convs.filter((c) => !c.pinned)
   const map = new Map<string, ConversationOut[]>()
-  for (const c of convs) {
+  for (const c of unpinned) {
     const g = getGroup(c.updated_at)
     if (!map.has(g)) map.set(g, [])
     map.get(g)!.push(c)
   }
-  return GROUP_ORDER.filter((g) => map.has(g)).map((g) => [g, map.get(g)!])
+  const groups: [string, ConversationOut[]][] = []
+  if (pinned.length > 0) groups.push(['Pinned', pinned])
+  groups.push(...GROUP_ORDER.filter((g) => map.has(g)).map((g): [string, ConversationOut[]] => [g, map.get(g)!]))
+  return groups
 }
 
 // ── Conversation panel ────────────────────────────────────────────────────────
@@ -275,11 +280,12 @@ function ConversationPanel() {
             {items.map((c) => (
               <button
                 key={c.id}
-                className={`${styles.convItem} ${c.id === activeConversationId ? styles.convActive : ''}`}
+                className={`${styles.convItem} ${c.id === activeConversationId ? styles.convActive : ''} ${c.pinned ? styles.convPinned : ''}`}
                 onClick={() => handleSelect(c.id)}
                 title={c.title ?? `Conversation #${c.id}`}
               >
                 <span className={styles.convTitle}>
+                  {c.pinned && <span className={styles.pinIcon} aria-label="Pinned">📌 </span>}
                   {c.title ?? `conv #${c.id}`}
                 </span>
                 {c.tags.length > 0 && (

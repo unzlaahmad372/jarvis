@@ -24,6 +24,7 @@ export interface ConversationOut {
   workspace_id: number
   title: string | null
   tags: string[]
+  pinned: boolean
   total_input_tokens: number
   total_output_tokens: number
   created_at: string
@@ -236,6 +237,11 @@ export interface SettingsOut {
 export interface TagsOut {
   conversation_id: number
   tags: string[]
+}
+
+export interface PinOut {
+  conversation_id: number
+  pinned: boolean
 }
 
 export interface ModelOut {

@@ -267,6 +267,11 @@
 
 .summarizeBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.pinActive {
+  color: var(--hud-accent) !important;
+  border-color: var(--hud-accent-muted) !important;
+}
+
 .summaryPanel {
   display: flex;
   align-items: flex-start;

@@ -172,7 +172,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             from sqlalchemy import text
             await conn.execute(text("ALTER TABLE conversations ADD COLUMN tags VARCHAR(500)"))
-        except Exception:
+        except Exception:  # noqa: S110
+            pass  # column already exists
+        try:
+            from sqlalchemy import text
+            await conn.execute(
+                text("ALTER TABLE conversations ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
+            )
+        except Exception:  # noqa: S110
             pass  # column already exists
 
     await _seed_default_workspace()

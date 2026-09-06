@@ -33,6 +33,7 @@ import type {
   MemoryCreate,
   MemoryOut,
   ModelsOut,
+  PinOut,
   PrometheusQueryOut,
   RefreshRequest,
   RetentionResult,
@@ -84,6 +85,8 @@ export const conversationsApi = {
     request<SummaryOut>(`/api/v1/conversations/${id}/summarize`, { method: 'POST' }),
   tag: (id: number) =>
     request<TagsOut>(`/api/v1/conversations/${id}/tags`, { method: 'POST' }),
+  pin: (id: number) =>
+    request<PinOut>(`/api/v1/conversations/${id}/pin`, { method: 'POST' }),
 }
 
 // ── Documents ────────────────────────────────────────────────────────────────

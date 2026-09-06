@@ -421,6 +421,11 @@ export function ChatPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conversations'] }),
   })
 
+  const pinMutation = useMutation({
+    mutationFn: () => conversationsApi.pin(activeConversationId!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+  })
+
   const handleRename = async (newTitle: string) => {
     if (!activeConversationId) return
     try {
@@ -592,6 +597,16 @@ export function ChatPage() {
                 aria-label="Generate topic tags"
               >
                 {tagMutation.isPending ? '⏳' : '🏷'}
+              </button>
+              <button
+                className={`${styles.summarizeBtn} ${conversation?.pinned ? styles.pinActive : ''}`}
+                onClick={() => pinMutation.mutate()}
+                disabled={pinMutation.isPending}
+                title={conversation?.pinned ? 'Unpin conversation' : 'Pin conversation'}
+                aria-label={conversation?.pinned ? 'Unpin conversation' : 'Pin conversation'}
+                aria-pressed={conversation?.pinned ?? false}
+              >
+                📌
               </button>
               <ContextBar
                 contextTokens={lastTokenUsage?.context ?? null}

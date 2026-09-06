@@ -55,6 +55,7 @@ class ConversationOut(BaseModel):
     workspace_id: int
     title: str | None = None
     tags: list[str] = []
+    pinned: bool = False
     total_input_tokens: int
     total_output_tokens: int
     created_at: datetime

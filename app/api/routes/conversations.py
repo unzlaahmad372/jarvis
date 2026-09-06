@@ -6,6 +6,7 @@ GET   /api/v1/conversations/{id}     — get conversation with messages
 PATCH /api/v1/conversations/{id}     — rename conversation
 POST  /api/v1/conversations/{id}/summarize — generate on-demand summary (Phase 29)
 POST  /api/v1/conversations/{id}/tags     — generate topic tags (Phase 30)
+POST  /api/v1/conversations/{id}/pin      — toggle pin (Phase 33)
 """
 
 from __future__ import annotations
@@ -28,7 +29,9 @@ class ConversationPatch(BaseModel):
 @router.get("", summary="List conversations")
 async def list_conversations(session: DbSession) -> list[ConversationOut]:
     result = await session.execute(
-        select(Conversation).order_by(Conversation.updated_at.desc())
+        select(Conversation).order_by(
+            Conversation.pinned.desc(), Conversation.updated_at.desc()
+        )
     )
     return [ConversationOut.model_validate(c) for c in result.scalars().all()]
 
@@ -126,6 +129,34 @@ async def get_conversation(
             for m in messages
         ],
     )
+
+
+class PinOut(BaseModel):
+    conversation_id: int
+    pinned: bool
+
+
+@router.post(
+    "/{conversation_id}/pin",
+    summary="Toggle pin on a conversation",
+    response_model=PinOut,
+)
+async def pin_conversation(
+    conversation_id: int,
+    session: DbSession,
+) -> PinOut:
+    """Toggle the pinned state of a conversation."""
+    conv = (await session.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )).scalar_one_or_none()
+    if conv is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Conversation {conversation_id} not found",
+        )
+    conv.pinned = not conv.pinned
+    await session.commit()
+    return PinOut(conversation_id=conv.id, pinned=conv.pinned)
 
 
 class SummaryOut(BaseModel):
