@@ -156,9 +156,16 @@ class ContextBuilder:
             system_prompt_version=self.SYSTEM_PROMPT_VERSION,
         )
 
+        # Assemble the full prompt: context sections prepended to user message
+        if included:
+            sections_text = "\n\n".join(s.content for s in included)
+            full_user_message = f"{sections_text}\n\n{user_message}"
+        else:
+            full_user_message = user_message
+
         return BuiltContext(
             system_prompt=system,
-            user_message=user_message,
+            user_message=full_user_message,
             context_sections=included,
             total_tokens=total,
             budget_tokens=self.effective_budget,

@@ -3,7 +3,7 @@
 A private, local-first AI assistant inspired by JARVIS from Iron Man.
 Runs entirely on your machine. No cloud account required.
 
-**Current status: Phase 33 — Conversation Pinning complete.**
+**Current status: Phase 44 — Model-Aware Context Window & Coverage Hardening complete.**
 
 - ✅ Phase 0 — FastAPI backend, SQLite, Ollama, health endpoints
 - ✅ Phase 1 — Persistent chat, streaming (SSE), context budgeting, React/Vite frontend
@@ -34,6 +34,15 @@ Runs entirely on your machine. No cloud account required.
 - ✅ Phase 31 — Auto-tag on first turn, tag button in header, tag filter bar in sidebar
 - ✅ Phase 32 — Model Switcher — runtime model selection per conversation
 - ✅ Phase 33 — Conversation Pinning — toggle pin, pinned-first ordering, pin button in header
+- ✅ Phase 35 — LLM Tool Parameter Extraction — LLM extracts params from user message via schema
+- ✅ Phase 36 — Web Search Tool — DuckDuckGo HTML, no API key, untrusted-content labelling
+- ✅ Phase 37 — Real APScheduler Backend — cron jobs actually fire, FakeBackend kept for tests
+- ✅ Phase 38 — Calendar Integration — ICS file read/query, list_calendar_events, get_todays_events
+- ✅ Phase 39 — Vector Memory Search — Chroma similarity search, SQL LIKE fallback
+- ✅ Phase 40 — psutil dependency, JARVIS_EXTRA_FILE_ROOTS, KUBERNETES_OPERATION intent, require_confirmation default
+- ✅ Phase 42 — Daily Use Hardening — psutil, FileAccessRegistry env config, k8s intent wiring
+- ✅ Phase 43 — Senior Architect Assessment — 16 issues identified and fixed (ContextBuilder bug, orchestrator dedup, confirmation flow, planner guards, memory provider injection, tool registration extraction, test isolation)
+- ✅ Phase 44 — Model-Aware Context Window — lazy capability probe, auto-adapts to model context window; 26 new API tests (conversations, memory, documents); automation trigger SKIP-overlap bug fixed
 
 ---
 
@@ -326,3 +335,13 @@ See [docs/security.md](docs/security.md) for full details.
 | 31 | Auto-tag on first turn, tag button in header, tag filter bar in sidebar | ✅ Done |
 | 32 | Model Switcher — runtime model selection per conversation | ✅ Done |
 | 33 | Conversation Pinning — toggle pin, pinned-first ordering, pin button in header | ✅ Done |
+| 34 | Wake Word Hardening — dedicated wake word engine (e.g. Porcupine) for noise-resistant, always-on detection | 🔜 Planned |
+| 35 | LLM Tool Parameter Extraction — LLM extracts params from user message via schema | ✅ Done |
+| 36 | Web Search Tool — DuckDuckGo / SearXNG integration, untrusted-content protections | ✅ Done |
+| 37 | Real APScheduler Backend — wire in persistent scheduler so automation jobs actually fire | ✅ Done |
+| 38 | Calendar Integration — Google Calendar / ICS file, morning briefing automation | ✅ Done |
+| 39 | Vector Memory Search — replace SQL LIKE with embedding similarity using existing Chroma store | ✅ Done |
+| 40 | Daily Use Hardening — psutil, FileAccessRegistry env config, k8s intent wiring | ✅ Done |
+| 42 | Daily Use Hardening cont. — require_confirmation default, JARVIS_EXTRA_FILE_ROOTS | ✅ Done |
+| 43 | Senior Architect Assessment — 16 issues fixed, 572 tests passing, 79% coverage | ✅ Done |
+| 44 | Model-Aware Context Window — lazy capability probe, auto-adapts to model context window; 26 new API tests; automation trigger fix | ✅ Done |

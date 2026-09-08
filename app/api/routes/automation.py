@@ -128,7 +128,11 @@ async def trigger_job(job_id: int, db: DbDep) -> AutomationExecutionOut:
     exec_rec = await job_service.record_execution_start(
         db, job, scheduled_time=datetime.now(UTC)
     )
-    # Immediately mark as success for manual trigger (real execution is async)
+    if exec_rec is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Job skipped: a previous execution is still running (SKIP overlap policy).",
+        )
     exec_rec = await job_service.record_execution_end(
         db, exec_rec, status="SUCCESS", result_summary="Manually triggered."
     )

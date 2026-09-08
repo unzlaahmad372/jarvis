@@ -31,12 +31,18 @@ DECOMPOSER_VERSION = "1.0"
 
 # Tools available per intent (same as planner, kept in sync)
 _INTENT_TOOLS: dict[Intent, list[str]] = {
-    Intent.SYSTEM_OPERATION: ["system_info", "disk_usage"],
-    Intent.FILE_OPERATION: [],
+    Intent.SYSTEM_OPERATION: ["system_info", "disk_usage", "cpu_usage", "memory_usage", "process_list"],
+    Intent.FILE_OPERATION: ["list_directory", "search_files", "read_file"],
     Intent.AUTOMATION_OPERATION: [],
     Intent.KNOWLEDGE_SEARCH: [],
-    Intent.MEMORY_SEARCH: [],
+    Intent.MEMORY_SEARCH: ["memory_search"],
     Intent.GENERAL_CHAT: [],
+    Intent.WEB_SEARCH: ["web_search"],
+    Intent.CALENDAR_OPERATION: ["get_todays_events", "list_calendar_events"],
+    Intent.KUBERNETES_OPERATION: [
+        "list_contexts", "list_namespaces", "list_pods",
+        "list_deployments", "cluster_health", "get_pod_logs",
+    ],
 }
 
 # Conjunctions that may separate independent sub-requests

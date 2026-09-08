@@ -1,11 +1,13 @@
 # JARVIS — Local Setup Guide
 
+**Current status: Phase 44 — 598 tests, 79% coverage.**
+
 ## Prerequisites
 
 | Requirement | Version | Notes |
 |---|---|---|
 | Python | 3.12+ | `py -3.12 --version` |
-| Node.js | 20 LTS | For frontend (Phase 0 shell) |
+| Node.js | 20 LTS | For frontend |
 | Ollama | Latest | https://ollama.com |
 | Git | Any | |
 
@@ -64,6 +66,25 @@ JARVIS_LLM_MODEL=llama3.2
 JARVIS_OLLAMA_URL=http://127.0.0.1:11434
 ```
 
+Optional configuration:
+```env
+# Extra filesystem roots JARVIS can access
+JARVIS_EXTRA_FILE_ROOTS=C:/Users/me/Documents,D:/projects
+
+# Extra applications allowed by open_application tool
+JARVIS_ALLOWED_APPS=obsidian,spotify,gitkraken
+
+# Require confirmation for LOW_RISK tools (default: false)
+JARVIS_REQUIRE_CONFIRMATION=false
+
+# Enable web search (DuckDuckGo, no API key)
+JARVIS_ENABLE_WEB_SEARCH=false
+
+# Enable calendar (ICS file)
+JARVIS_ENABLE_CALENDAR=false
+JARVIS_CALENDAR_ICS_PATH=C:/path/to/calendar.ics
+```
+
 ## 6. Install and start Ollama
 
 Download from https://ollama.com and install.
@@ -82,6 +103,15 @@ ollama list
 
 ```bash
 python -m pytest tests/ -v
+# Expected: 598 passed, 79% coverage
+```
+
+## Quality checks
+
+```bash
+python -m ruff check app/ tests/    # lint
+python -m mypy app/                 # type check
+python -m pip_audit                 # dependency audit
 ```
 
 ## 8. Start the backend

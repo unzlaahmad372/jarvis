@@ -64,6 +64,7 @@ async def test_client(db_engine: AsyncEngine):  # type: ignore[return]
 
     # Register tools (lifespan doesn't run in test client)
     from app.main import _register_tools
+    from app.tools.registry import reset_registry
     _register_tools(get_settings())
 
     application = create_app()
@@ -80,6 +81,7 @@ async def test_client(db_engine: AsyncEngine):  # type: ignore[return]
         ) as client:
             yield client
     finally:
-        # Clean up provider override
+        # Clean up provider override and tool registry
         chat_module.set_llm_provider(None)
         reset_rate_limiter(None)
+        reset_registry()

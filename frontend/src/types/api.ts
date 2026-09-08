@@ -39,6 +39,7 @@ export interface ChatRequest {
   message: string
   conversation_id?: number
   stream?: boolean
+  confirmation_id?: string
 }
 
 export interface ChatResponse {

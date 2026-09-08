@@ -24,6 +24,10 @@ class ChatRequest(BaseModel):
         default=True,
         description="Stream the response via SSE. Set false for a single JSON response.",
     )
+    confirmation_id: str | None = Field(
+        default=None,
+        description="Confirmation token for re-sending a message after tool approval.",
+    )
 
 
 # ── Responses ─────────────────────────────────────────────────────────────────

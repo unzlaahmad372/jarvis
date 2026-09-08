@@ -4587,6 +4587,26 @@ Requirements:
 
 Potential providers can be evaluated later, but no provider should be hard-coded into core logic.
 
+## Future Improvement — Dedicated Wake Word Engine
+
+The current browser Web Speech API implementation for wake word detection is sensitive to ambient noise (TV, background conversation, etc.) because it uses general-purpose continuous speech recognition rather than a purpose-built wake word detector.
+
+A future improvement should replace or supplement the browser STT wake word listener with a dedicated local wake word engine such as:
+- **Porcupine** (Picovoice) — lightweight on-device wake word detection, very low false-positive rate, works offline
+- **OpenWakeWord** — open-source, runs locally, customizable wake phrases
+- **Snowboy** (archived but still used) — lightweight local hotword detection
+
+Benefits of a dedicated engine:
+- trained specifically on the wake phrase, not general speech
+- much lower false-positive rate in noisy environments
+- lower CPU usage than continuous full STT
+- does not require a network connection or cloud STT service
+- rolling audio buffer is short and bounded — raw audio is not persisted
+
+This aligns with the `WakeWordProvider` abstraction already defined in the voice architecture. The browser Web Speech API implementation remains a valid fallback for environments where a native engine cannot be installed.
+
+Phase mapping: implement after Phase 5C (Wake Word) is stable and the push-to-talk path is proven.
+
 # 88. SPEAKER ENROLLMENT AND VOICE RECOGNITION
 
 Speaker verification is separate from speech-to-text.
@@ -6251,3 +6271,257 @@ The project is **APPROVED TO START PHASE 0** when all of the following are true:
 At the end of Phase 0, use `JARVIS_READINESS_CHECKLIST.md` before proceeding.
 
 **Chief Architect decision: GO for Phase 0.**
+
+
+---
+
+# 124. PHASE 35 — LLM-DRIVEN TOOL PARAMETER EXTRACTION
+
+## Status: Planned
+
+## Problem
+
+The current `AgentPlanner._build_params()` hardcodes `{"path": "."}` for all file tools regardless of what the user asked. If the user says "read my resume", JARVIS reads the current directory, not the resume. Every existing tool is effectively broken for real use because parameters are never extracted from the message.
+
+## Solution
+
+Replace the hardcoded `_build_params` with an LLM call that extracts structured parameters from the user message before tool execution.
+
+## Design
+
+Add a `ParameterExtractor` component to `app/brain/`:
+
+```text
+user message
+    |
+    v
+ParameterExtractor
+    |
+    +--> LLM call with tool schema + message
+    |
+    v
+structured parameters (validated against tool input_schema)
+    |
+    v
+ToolExecutor
+```
+
+Each `Tool` already exposes an `input_schema`. The extractor sends the schema and the user message to the LLM and asks it to fill in the parameters as JSON. The result is validated against the schema before execution — the LLM proposes, the code validates.
+
+## Requirements
+
+- `ParameterExtractor` is a separate component, not embedded in `AgentPlanner`
+- extraction uses a short focused prompt, not the full conversation context
+- extracted parameters are validated with Pydantic before reaching `ToolExecutor`
+- if extraction fails or produces invalid parameters, fall back to asking the user for clarification — never silently pass bad parameters
+- extraction prompt version is tracked
+- `FakeParameterExtractor` required for tests
+- all existing tool tests must pass with real parameter extraction
+
+## Security
+
+The LLM output is untrusted. Validate every extracted parameter against the tool schema. Path parameters must still pass through `FileAccessRegistry` normalization and allow-list checks — extraction does not bypass the security boundary.
+
+## Phase Placement
+
+Implement after Phase 33 is stable. This is the single highest-impact improvement for daily usability.
+
+---
+
+# 125. PHASE 36 — WEB SEARCH TOOL
+
+## Status: Planned
+
+## Problem
+
+JARVIS is completely offline. It cannot answer "what is the weather", "latest news about X", or "what does this error mean" without the user providing context manually.
+
+## Solution
+
+Add a web search tool using a privacy-respecting, no-API-key search provider.
+
+## Preferred Provider
+
+**DuckDuckGo Instant Answer API** — free, no API key, no account, returns structured JSON. Suitable for factual lookups and definitions.
+
+**SearXNG** — self-hosted meta-search engine. Preferred if the user runs a local SearXNG instance. Fully private, no external dependency.
+
+## Design
+
+```text
+WebSearchTool
+- name: web_search
+- risk_level: READ_ONLY
+- input_schema: { query: str, max_results: int = 5 }
+- execute(): calls configured search provider, returns structured results
+```
+
+Results are returned as structured data (title, url, snippet, source). The LLM summarizes them — it does not receive raw HTML.
+
+## Requirements
+
+- provider is configurable via `JARVIS_SEARCH_PROVIDER` (duckduckgo / searxng / none)
+- disabled by default (`JARVIS_ENABLE_WEB_SEARCH=false`)
+- results are treated as untrusted external content — prompt injection protections apply
+- result URLs are never automatically opened or followed without user intent
+- `FakeSearchProvider` required for tests
+- network calls are never made in unit tests
+
+## Security
+
+Web search results are untrusted data. They must be passed to the LLM as a clearly labelled untrusted context slot, not as system instructions. The same prompt-injection defenses from Section 29 apply.
+
+## Phase Placement
+
+Implement after Phase 35 (parameter extraction) is complete. Web search is the single biggest usefulness jump for a personal assistant.
+
+---
+
+# 126. PHASE 37 — REAL APSCHEDULER BACKEND
+
+## Status: Planned
+
+## Problem
+
+`AutomationScheduler` has complete overlap policy, permission ceiling, idempotency, and execution tracking logic, but `FakeSchedulerBackend` is what runs in production. Scheduled jobs never actually fire on a timer.
+
+## Solution
+
+Wire in a real `APSchedulerBackend` that implements the existing `SchedulerBackend` interface.
+
+## Design
+
+```python
+class APSchedulerBackend(SchedulerBackend):
+    # wraps APScheduler AsyncIOScheduler
+    # persists jobs to SQLite via SQLAlchemyJobStore
+    # cron/interval/date trigger support
+    # maps JobSpec.schedule string to APScheduler trigger
+```
+
+The `AutomationScheduler` class does not change — only the backend it wraps.
+
+## Requirements
+
+- `APSchedulerBackend` implements the existing `SchedulerBackend` interface exactly
+- jobs persist across restarts via `SQLAlchemyJobStore` using the existing JARVIS SQLite database
+- `JobSpec.schedule` supports cron expressions and interval strings
+- permission ceiling enforcement remains in `AutomationScheduler`, not in the backend
+- `FakeSchedulerBackend` is retained for all tests — no test requires a real scheduler
+- scheduler starts in the lifespan and shuts down cleanly
+- failed job executions are logged and recorded in `ExecutionRecord`
+
+## Phase Placement
+
+Implement after Phase 36. The logic is already built — this is purely wiring the real backend.
+
+---
+
+# 127. PHASE 38 — CALENDAR INTEGRATION
+
+## Status: Planned
+
+## Problem
+
+JARVIS cannot answer "what's on my schedule today", set reminders, or generate a morning briefing that includes calendar events.
+
+## Solution
+
+Add a `CalendarProvider` abstraction with an initial implementation for Google Calendar (via OAuth2) and a local ICS file reader as a zero-dependency fallback.
+
+## Design
+
+```text
+CalendarProvider
+- list_events(start, end, calendar_ids)
+- get_event(event_id)
+- health()
+
+Implementations:
+- GoogleCalendarProvider   (OAuth2, Google Calendar API v3)
+- ICSFileProvider          (reads local .ics file, no auth required)
+- FakeCalendarProvider     (deterministic, for tests)
+```
+
+## Tools
+
+```text
+CalendarTodayTool       — list today's events
+CalendarRangeTool       — list events in a date range
+CalendarSearchTool      — search events by keyword
+```
+
+All tools are `READ_ONLY`. Creating/modifying events is a future `SENSITIVE` action requiring confirmation.
+
+## Morning Briefing Automation
+
+Once the scheduler (Phase 37) and calendar are both available, a morning briefing automation becomes possible:
+
+```text
+Every weekday at 07:30:
+  - fetch today's calendar events
+  - fetch overnight infrastructure alerts (if Kubernetes/Jenkins enabled)
+  - generate a spoken/text briefing
+  - deliver via TTS or notification
+```
+
+## Requirements
+
+- `JARVIS_ENABLE_CALENDAR=false` by default
+- Google OAuth2 tokens stored locally, never committed to Git
+- ICS file path configurable via `JARVIS_ICS_FILE_PATH`
+- calendar data is `PERSONAL` classification — never sent to cloud LLM without explicit approval
+- `FakeCalendarProvider` required for all tests
+- no real calendar API calls in unit tests
+
+## Phase Placement
+
+Implement after Phase 37. Requires the scheduler for proactive briefings.
+
+---
+
+# 128. PHASE 39 — VECTOR MEMORY SEARCH
+
+## Status: Planned
+
+## Problem
+
+`search_memories()` uses SQL `LIKE '%query%'` which misses synonyms, related concepts, and anything not an exact substring match. If you remember "Phoenix GA target is Q3" and ask "what did I decide about the Phoenix release?", it returns nothing because "release" is not in the stored text.
+
+## Solution
+
+Replace SQL LIKE memory search with embedding similarity search using the Chroma vector store already present in the system.
+
+## Design
+
+```text
+MemoryVectorIndex
+- index(memory: Memory) -> None
+- search(query: str, top_k: int, workspace_id: int) -> list[Memory]
+- delete(memory_id: int) -> None
+- rebuild(memories: list[Memory]) -> None
+```
+
+Memory embeddings are stored in a dedicated Chroma collection (`jarvis_memories`) separate from document chunks.
+
+The existing `search_memories()` function signature does not change — callers are unaffected. The implementation switches from SQL LIKE to vector similarity internally.
+
+SQL LIKE search is retained as a fallback when the vector index is unavailable or being rebuilt.
+
+## Requirements
+
+- memory embeddings use the same `EmbeddingProvider` abstraction as document RAG
+- embedding model version is stored with each memory embedding
+- if the embedding model changes, the memory index is marked stale and rebuilt automatically
+- `forget()` removes the memory from both SQLite and the vector index atomically
+- `purge_all_memories()` clears both stores
+- `FakeMemoryVectorIndex` required for tests — no real Chroma or Ollama in unit tests
+- existing memory CRUD tests must continue to pass
+
+## Migration
+
+On first startup after this phase, existing memories are batch-embedded and indexed. This is a one-time background operation. JARVIS remains usable during indexing — SQL LIKE search is used as fallback until the index is ready.
+
+## Phase Placement
+
+Implement after Phase 38. Foundational infrastructure (Chroma, embeddings) is already in place — this is a targeted improvement to an existing component.

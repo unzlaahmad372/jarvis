@@ -26,9 +26,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.brain.confirmation import ConfirmationStore, get_confirmation_store
 from app.brain.context_builder import ContextSlot
 from app.brain.intent_router import Intent
+from app.brain.param_extractor import extract_params
 from app.brain.task_decomposer import decompose
 from app.core.config import Settings
 from app.core.logging import get_logger
+from app.llm.base import LLMProvider
 from app.tools.base import PolicyDecisionType, ToolRequest
 from app.tools.executor import ToolExecutor
 from app.tools.registry import ToolRegistry
@@ -73,16 +75,19 @@ class AgentPlanner:
         executor: ToolExecutor,
         settings: Settings,
         confirmation_store: ConfirmationStore | None = None,
+        llm: LLMProvider | None = None,
     ) -> None:
         self._registry = registry
         self._executor = executor
         self._settings = settings
         self._confirmation_store = confirmation_store or get_confirmation_store()
+        self._llm = llm
 
     async def plan(
         self,
         message: str,
         session: AsyncSession,
+        confirmation_id: str | None = None,
     ) -> PlanResult:
         """Decompose the message into sub-tasks, run tools, return enriched context."""
         sub_tasks = decompose(message)
@@ -104,8 +109,22 @@ class AgentPlanner:
                 if tool is None:
                     continue
 
-                params = self._build_params(tool_name, message)
-                request = ToolRequest(tool_name=tool_name, parameters=params)
+                params = await self._build_params(tool_name, message)
+
+                # Skip tools whose required parameters could not be extracted
+                if not self._has_required_params(tool_name, params):
+                    logger.debug(
+                        "plan_step_skipped_missing_params",
+                        tool=tool_name,
+                        params=list(params.keys()),
+                    )
+                    continue
+
+                request = ToolRequest(
+                    tool_name=tool_name,
+                    parameters=params,
+                    confirmation_id=confirmation_id,
+                )
 
                 tool_result, decision = await self._executor.execute(request, session)
 
@@ -167,21 +186,29 @@ class AgentPlanner:
         )
         return result
 
-    def _build_params(self, tool_name: str, message: str) -> dict[str, object]:
-        """Build tool parameters from the user message.
+    async def _build_params(self, tool_name: str, message: str) -> dict[str, object]:
+        """Extract tool parameters from the user message via LLM (Phase 35).
 
-        For tools that require a path, default to '.' (current data dir).
-        system_info takes no parameters.
+        Skips the LLM call when the schema is empty or no LLM is available.
         """
-        _path_tools = {
-            "list_directory",
-            "search_files",
-            "file_metadata",
-            "disk_usage",
-        }
-        if tool_name in _path_tools:
-            return {"path": "."}
-        if tool_name == "read_file":
-            return {"path": "."}
-        # system_info and others take no parameters
-        return {}
+        tool = self._registry.get(tool_name)
+        if tool is None or not tool.parameters_schema or self._llm is None:
+            return {}
+        return await extract_params(message, tool_name, tool.parameters_schema, self._llm)
+
+    def _has_required_params(self, tool_name: str, params: dict[str, object]) -> bool:
+        """Return False if any required parameter (no default) is missing or null.
+
+        Prevents cascading tool failures when the LLM cannot extract a required
+        parameter (e.g. 'context' for k8s tools, 'pod_name' for get_pod_logs).
+        A parameter is considered required when its schema entry has no 'default'
+        key and its extracted value is None or absent.
+        """
+        tool = self._registry.get(tool_name)
+        if tool is None:
+            return False
+        for key, spec in tool.parameters_schema.items():
+            if isinstance(spec, dict) and "default" not in spec:
+                if params.get(key) is None:
+                    return False
+        return True

@@ -66,7 +66,17 @@ class Settings(BaseSettings):
     runtime_mode: Literal["native", "container"] = "native"
 
     # ── Safety ───────────────────────────────────────────────────────────────
-    require_confirmation: bool = True
+    # False = LOW_RISK tools run without confirmation; SENSITIVE/DANGEROUS always confirm.
+    require_confirmation: bool = False
+
+    # ── Filesystem extra roots ────────────────────────────────────────────────
+    # Comma-separated list of extra allowed paths, e.g. "C:/Users/me/Documents,D:/projects"
+    extra_file_roots: str = ""
+
+    # ── Allowed applications ────────────────────────────────────────────────
+    # Comma-separated extra app names to add to the OpenApplicationTool allowlist
+    # e.g. "obsidian,spotify,gitkraken"
+    allowed_apps: str = ""
 
     # ── Retention ────────────────────────────────────────────────────────────
     conversation_retention_days: int = 365
@@ -142,6 +152,9 @@ class Settings(BaseSettings):
     enable_always_listening: bool = False
     inbox_watcher_enabled: bool = False
     enable_plugins: bool = False  # Phase 24 — must be explicitly opted in
+    enable_web_search: bool = False  # Phase 36 — web search via DuckDuckGo
+    enable_calendar: bool = False  # Phase 38 — ICS calendar integration
+    calendar_ics_path: str = ""  # path to .ics file
 
     @field_validator("host")
     @classmethod
@@ -168,6 +181,14 @@ class Settings(BaseSettings):
                 "Cloud processing requires explicit opt-in."
             )
         return self
+
+    @property
+    def allowed_apps_set(self) -> set[str]:
+        return {a.strip().lower() for a in self.allowed_apps.split(",") if a.strip()}
+
+    @property
+    def extra_file_roots_list(self) -> list[str]:
+        return [p.strip() for p in self.extra_file_roots.split(",") if p.strip()]
 
     @property
     def k8s_protected_contexts_list(self) -> list[str]:

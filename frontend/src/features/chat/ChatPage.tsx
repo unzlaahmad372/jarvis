@@ -304,6 +304,7 @@ export function ChatPage() {
     jarvisState,
     lastError,
     pendingConfirmation,
+    pendingConfirmationMessage,
     lastPlanSteps,
     lastIntent,
     lastCitations,
@@ -343,19 +344,49 @@ export function ChatPage() {
   const voiceEnabled = voiceSettings?.enabled ?? false
   const voiceAutoSpeak = voiceSettings?.auto_speak ?? true
 
-  // Stable ref so handleWake doesn't re-create on every stt object change (M5)
+  // Stable refs — prevent stale closures without re-creating callbacks
   const sttStartRef = useRef(stt.start)
   useEffect(() => { sttStartRef.current = stt.start }, [stt.start])
+  const wakeEnableRef = useRef<() => void>(() => undefined)
+  // Only re-enable wake word after STT was actually active (not on mount)
+  const sttWasActiveRef = useRef(false)
+
+  // Freeze wakeWordActive so voiceSettings loading doesn't restart the recognizer
+  const wakeWordActive = voiceEnabled && wakeWordEnabled
+  const wakeWordActiveRef = useRef(wakeWordActive)
+  const [wakeWordActiveStable, setWakeWordActiveStable] = useState(false)
+  useEffect(() => {
+    if (wakeWordActive !== wakeWordActiveRef.current) {
+      wakeWordActiveRef.current = wakeWordActive
+      setWakeWordActiveStable(wakeWordActive)
+    }
+  }, [wakeWordActive])
 
   const handleWake = useCallback(() => {
     if (isStreaming) return
+    console.log('[wake] handleWake fired, isStreaming=', isStreaming)
     setJarvisState('LISTENING')
+    console.log('[wake] starting STT')
+    sttWasActiveRef.current = true
     sttStartRef.current()
   }, [isStreaming, setJarvisState])
 
-  useWakeWord(handleWake, voiceEnabled && wakeWordEnabled, stt.listening)
+  const wakeWord = useWakeWord(handleWake, wakeWordActiveStable)
+  useEffect(() => { wakeEnableRef.current = wakeWord.enable }, [wakeWord.enable])
 
-  // Max context tokens from env or sensible default
+  // Re-enable wake word only after a real STT session ends
+  useEffect(() => {
+    if (stt.listening) {
+      sttWasActiveRef.current = true
+      return
+    }
+    if (sttWasActiveRef.current && wakeWordEnabled && voiceEnabled) {
+      sttWasActiveRef.current = false
+      console.log('[wake] STT ended — re-enabling wake word')
+      setTimeout(() => wakeEnableRef.current(), 300)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stt.listening])
   const maxContextTokens = parseInt(import.meta.env.VITE_MAX_CONTEXT_TOKENS ?? '8192', 10)
 
   // Auto-send after STT finishes (wake word flow) and resume wake listener
@@ -499,7 +530,7 @@ export function ChatPage() {
           )
           if (pendingStep?.confirmation_id) {
             toolsApi.getConfirmation(pendingStep.confirmation_id)
-              .then((conf) => setPendingConfirmation(conf))
+              .then((conf) => setPendingConfirmation(conf, message))
               .catch(() => { /* confirmation may have expired */ })
           }
         }
@@ -516,13 +547,31 @@ export function ChatPage() {
 
   const handleApprove = async () => {
     if (!pendingConfirmation) return
+    const originalMessage = pendingConfirmationMessage
+    setPendingConfirmation(null)
     try {
-      await toolsApi.confirm({
-        confirmation_id: pendingConfirmation.confirmation_id,
-        tool_name: pendingConfirmation.tool_name,
-        parameters: {},
-      })
-      setPendingConfirmation(null)
+      // Re-send the original message with the confirmation_id so the tool
+      // executes and the LLM receives the result.
+      if (originalMessage) {
+        startStreaming()
+        abortRef.current = new AbortController()
+        let finalConversationId = activeConversationId
+        for await (const event of chatApi.stream(
+          {
+            message: originalMessage,
+            conversation_id: activeConversationId ?? undefined,
+            confirmation_id: pendingConfirmation.confirmation_id,
+          },
+          abortRef.current.signal,
+        )) {
+          handleSSEEvent(event, (id) => { finalConversationId = id })
+        }
+        if (finalConversationId != null) {
+          finishStreaming(finalConversationId)
+          await queryClient.invalidateQueries({ queryKey: ['conversation', finalConversationId] })
+          await queryClient.invalidateQueries({ queryKey: ['conversations'] })
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Confirmation failed')
     }
@@ -679,7 +728,8 @@ export function ChatPage() {
             <>
               <button
                 className={`${styles.micBtn} ${stt.listening ? styles.micActive : ''}`}
-                onClick={stt.listening ? stt.stop : stt.start}
+                onClick={stt.listening ? stt.stop : () => { wakeWord.disable(); stt.start() }}
+                onMouseDown={(e) => e.preventDefault()}
                 disabled={isStreaming}
                 aria-label={stt.listening ? 'Stop recording' : 'Start voice input'}
                 title={stt.listening ? 'Stop recording' : 'Push to talk'}

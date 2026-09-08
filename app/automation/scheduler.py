@@ -148,6 +148,88 @@ class SchedulerBackend(ABC):
     def shutdown(self) -> None: ...
 
 
+class APSchedulerBackend(SchedulerBackend):
+    """Production scheduler backend backed by APScheduler.
+
+    Uses a background thread scheduler with an in-memory job store.
+    Jobs are re-registered from the DB on startup by AutomationScheduler.
+    """
+
+    def __init__(self, executor_fn: Any | None = None) -> None:
+        """executor_fn: async callable(job_name, payload) invoked on each fire."""
+        from apscheduler.schedulers.background import BackgroundScheduler
+
+        self._scheduler = BackgroundScheduler()
+        self._executor_fn = executor_fn
+        self._specs: dict[str, JobSpec] = {}
+
+    def _make_job_fn(self, spec: JobSpec) -> Any:
+        import asyncio
+
+        def _run() -> None:
+            if self._executor_fn is not None:
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.run_coroutine_threadsafe(
+                            self._executor_fn(spec.name, spec.action_payload), loop
+                        )
+                    else:
+                        loop.run_until_complete(
+                            self._executor_fn(spec.name, spec.action_payload)
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    import logging
+                    logging.getLogger(__name__).error(
+                        "apscheduler_job_error", extra={"job": spec.name, "error": str(exc)}
+                    )
+
+        return _run
+
+    def add_job(self, spec: JobSpec) -> None:
+        from apscheduler.triggers.cron import CronTrigger
+
+        self._specs[spec.name] = spec
+        trigger = CronTrigger.from_crontab(spec.schedule)
+        self._scheduler.add_job(
+            self._make_job_fn(spec),
+            trigger=trigger,
+            id=spec.name,
+            name=spec.name,
+            replace_existing=True,
+        )
+        if not spec.enabled:
+            self._scheduler.pause_job(spec.name)
+
+    def remove_job(self, name: str) -> None:
+        self._specs.pop(name, None)
+        try:
+            self._scheduler.remove_job(name)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def pause_job(self, name: str) -> None:
+        self._scheduler.pause_job(name)
+
+    def resume_job(self, name: str) -> None:
+        self._scheduler.resume_job(name)
+
+    def list_jobs(self) -> list[str]:
+        return [j.id for j in self._scheduler.get_jobs()]
+
+    def is_running(self, name: str) -> bool:
+        job = self._scheduler.get_job(name)
+        return job is not None and not getattr(job, "next_run_time", None) is None
+
+    def start(self) -> None:
+        if not self._scheduler.running:
+            self._scheduler.start()
+
+    def shutdown(self) -> None:
+        if self._scheduler.running:
+            self._scheduler.shutdown(wait=False)
+
+
 class FakeSchedulerBackend(SchedulerBackend):
     """Deterministic in-memory scheduler for tests — no wall-clock dependency."""
 

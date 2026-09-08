@@ -17,10 +17,13 @@ from app.api.schemas.chat import (
     VisionAnalyseResponse,
 )
 from app.brain.orchestrator import ChatOrchestrator
+from app.core.logging import get_logger
 from app.inference.manager import InferenceQueueFullError
 from app.llm.base import LLMProvider
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
+
+logger = get_logger(__name__)
 
 _llm_provider_override: LLMProvider | None = None
 
@@ -124,10 +127,17 @@ async def chat(
     orchestrator: OrchestratorDep,
 ) -> StreamingResponse | ChatResponse:
     """Send a message to JARVIS (stream=true for SSE, stream=false for JSON)."""
+    logger.info(
+        "chat_message_received",
+        conversation_id=body.conversation_id,
+        stream=body.stream,
+        message_length=len(body.message),
+        message_preview=body.message[:200],
+    )
     if body.stream:
         async def _generate() -> AsyncGenerator[str, None]:
             async for chunk in orchestrator.stream_chat(
-                session, body.message, body.conversation_id
+                session, body.message, body.conversation_id, body.confirmation_id
             ):
                 yield chunk
 
@@ -139,7 +149,7 @@ async def chat(
 
     try:
         user_msg, asst_msg, compacted, rag_result, _plan = await orchestrator.chat(
-            session, body.message, body.conversation_id
+            session, body.message, body.conversation_id, body.confirmation_id
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

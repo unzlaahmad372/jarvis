@@ -51,56 +51,8 @@ logger = get_logger(__name__)
 
 def _register_tools(settings: Settings) -> None:
     """Register all built-in tools at startup."""
-    from app.tools.filesystem.access import FileAccessRegistry
-    from app.tools.filesystem.tools import (
-        FileMetadataTool,
-        ListDirectoryTool,
-        OpenFileTool,
-        ReadFileTool,
-        SearchFilesTool,
-    )
-    from app.tools.registry import get_registry, reset_registry
-    from app.tools.system.tools import DiskUsageTool, SystemInfoTool
-
-    reset_registry()
-    registry = get_registry()
-
-    # File access registry — allow the data directory by default
-    far = FileAccessRegistry()
-    far.add_root("data", settings.data_dir.resolve())
-
-    registry.register(ListDirectoryTool(far))
-    registry.register(ReadFileTool(far))
-    registry.register(SearchFilesTool(far))
-    registry.register(FileMetadataTool(far))
-    registry.register(OpenFileTool(far))
-    registry.register(SystemInfoTool())
-    registry.register(DiskUsageTool())
-
-    # Vision tool (Phase 14)
-    if settings.enable_vision:
-        from app.tools.vision.tools import VisionTool
-        registry.register(VisionTool())
-
-    # Kubernetes tools — registered only when enabled
-    if settings.enable_kubernetes:
-        from app.tools.kubernetes.client import RealKubernetesClient
-        from app.tools.kubernetes.tools import (
-            ClusterHealthTool,
-            GetPodLogsTool,
-            ListContextsTool,
-            ListDeploymentsTool,
-            ListNamespacesTool,
-            ListPodsTool,
-        )
-
-        k8s_client = RealKubernetesClient()
-        registry.register(ListContextsTool(k8s_client, settings))
-        registry.register(ListNamespacesTool(k8s_client, settings))
-        registry.register(ListPodsTool(k8s_client, settings))
-        registry.register(GetPodLogsTool(k8s_client, settings))
-        registry.register(ListDeploymentsTool(k8s_client, settings))
-        registry.register(ClusterHealthTool(k8s_client, settings))
+    from app.tools.registration import register_all_tools
+    register_all_tools(settings)
 
 
 async def _seed_default_workspace() -> None:
@@ -123,6 +75,49 @@ async def _seed_default_workspace() -> None:
             )
             await session.commit()
             logger.info("workspace_seeded", name="default")
+
+
+async def _run_migrations(database_url: str) -> None:
+    """Run Alembic migrations in a thread executor (non-blocking).
+
+    Stamps existing databases that pre-date Alembic before upgrading.
+    """
+    import asyncio
+    from functools import partial
+
+    # Alembic env.py handles the +aiosqlite -> plain sqlite conversion
+    sync_url = database_url.replace("sqlite+aiosqlite", "sqlite")
+
+    def _migrate() -> None:
+        from alembic import command
+        from alembic.config import Config
+        from sqlalchemy import create_engine, inspect, text
+
+        cfg = Config("alembic.ini")
+        cfg.set_main_option("sqlalchemy.url", sync_url)
+
+        # Stamp existing databases that pre-date Alembic so upgrade is a no-op
+        engine = create_engine(sync_url)
+        with engine.connect() as conn:
+            has_tables = inspect(engine).has_table("settings")
+            has_version = inspect(engine).has_table("alembic_version")
+            if has_tables and not has_version:
+                # Create the version table and insert the baseline revision
+                conn.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"))
+                conn.execute(text("INSERT INTO alembic_version (version_num) VALUES ('0001')"))
+                conn.commit()
+            elif has_tables and has_version:
+                # Check if version table is empty (stamp failed previously)
+                row = conn.execute(text("SELECT version_num FROM alembic_version")).fetchone()
+                if row is None:
+                    conn.execute(text("INSERT INTO alembic_version (version_num) VALUES ('0001')"))
+                    conn.commit()
+        engine.dispose()
+
+        command.upgrade(cfg, "head")
+
+    await asyncio.get_event_loop().run_in_executor(None, partial(_migrate))
+    logger.info("alembic_migrations_applied")
 
 
 @asynccontextmanager
@@ -164,23 +159,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialise database
     engine = await init_db(settings.database_url, settings.database_dir)
 
-    # Create tables (Alembic handles migrations in production;
-    # create_all is used here for Phase 0 simplicity)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        # Phase 30 — add tags column to existing databases (idempotent)
-        try:
-            from sqlalchemy import text
-            await conn.execute(text("ALTER TABLE conversations ADD COLUMN tags VARCHAR(500)"))
-        except Exception:  # noqa: S110
-            pass  # column already exists
-        try:
-            from sqlalchemy import text
-            await conn.execute(
-                text("ALTER TABLE conversations ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
-            )
-        except Exception:  # noqa: S110
-            pass  # column already exists
+    # Run Alembic migrations (idempotent — safe to call on every startup)
+    await _run_migrations(settings.database_url)
 
     await _seed_default_workspace()
 
@@ -197,6 +177,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── Build singleton orchestrator (shared InferenceManager semaphore) ──────
     from app.api.routes.chat import build_orchestrator
     orchestrator = build_orchestrator(settings)
+
+    # ── Wire automation executor ──────────────────────────────────────────────
+    from app.automation.jobs import init_executor
+    from app.db.database import get_session_factory
+    from app.tools.executor import ToolExecutor
+    from app.tools.registry import get_registry
+    _registry = get_registry()
+    _tool_executor = ToolExecutor(registry=_registry, settings=settings)
+    init_executor(
+        tool_registry=_registry,
+        tool_executor=_tool_executor,
+        orchestrator=orchestrator,
+        session_factory=get_session_factory(),
+    )
 
     # Store shared state on app
     app.state.db_engine = engine

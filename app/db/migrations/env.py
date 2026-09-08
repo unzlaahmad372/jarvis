@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import create_engine
 
 from app.core.config import get_settings
 from app.db.models import Base
@@ -19,7 +18,9 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    return get_settings().database_url
+    url = config.get_main_option("sqlalchemy.url") or get_settings().database_url
+    # Alembic uses the sync sqlite driver; strip +aiosqlite if present
+    return url.replace("sqlite+aiosqlite", "sqlite")
 
 
 def run_migrations_offline() -> None:
@@ -34,21 +35,13 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection):  # type: ignore[no-untyped-def]
-    context.configure(connection=connection, target_metadata=target_metadata)
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-async def run_async_migrations() -> None:
-    engine = create_async_engine(get_url())
-    async with engine.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await engine.dispose()
-
-
 def run_migrations_online() -> None:
-    asyncio.run(run_async_migrations())
+    engine = create_engine(get_url())
+    with engine.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+    engine.dispose()
 
 
 if context.is_offline_mode():

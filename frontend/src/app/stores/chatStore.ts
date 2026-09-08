@@ -28,6 +28,7 @@ interface ChatStore {
   jarvisState: JarvisState
   lastError: string | null
   pendingConfirmation: ConfirmationOut | null
+  pendingConfirmationMessage: string | null  // original message awaiting confirmation
   lastPlanSteps: PlanStep[]
   lastIntent: string | null
   lastCitations: CitationOut[]
@@ -41,7 +42,7 @@ interface ChatStore {
   setError: (message: string) => void
   clearError: () => void
   setJarvisState: (state: JarvisState) => void
-  setPendingConfirmation: (c: ConfirmationOut | null) => void
+  setPendingConfirmation: (c: ConfirmationOut | null, originalMessage?: string) => void
   setLastPlanSteps: (steps: PlanStep[], intent: string) => void
   setLastCitations: (citations: CitationOut[]) => void
   setLastTokenUsage: (usage: TokenUsageSummary) => void
@@ -55,6 +56,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   jarvisState: 'IDLE',
   lastError: null,
   pendingConfirmation: null,
+  pendingConfirmationMessage: null,
   lastPlanSteps: [],
   lastIntent: null,
   lastCitations: [],
@@ -70,6 +72,7 @@ export const useChatStore = create<ChatStore>((set) => ({
       jarvisState: 'THINKING',
       lastError: null,
       pendingConfirmation: null,
+      pendingConfirmationMessage: null,
       lastPlanSteps: [],
       lastIntent: null,
       lastCitations: [],
@@ -94,11 +97,12 @@ export const useChatStore = create<ChatStore>((set) => ({
 
   setJarvisState: (state) => set({ jarvisState: state }),
 
-  setPendingConfirmation: (c) =>
-    set({
+  setPendingConfirmation: (c, originalMessage) =>
+    set((s) => ({
       pendingConfirmation: c,
+      pendingConfirmationMessage: originalMessage ?? (c ? s.pendingConfirmationMessage : null),
       jarvisState: c ? 'WAITING_FOR_APPROVAL' : 'IDLE',
-    }),
+    })),
 
   setLastPlanSteps: (steps, intent) =>
     set({ lastPlanSteps: steps, lastIntent: intent }),

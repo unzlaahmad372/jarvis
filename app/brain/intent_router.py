@@ -32,6 +32,9 @@ class Intent(StrEnum):
     FILE_OPERATION = "FILE_OPERATION"
     SYSTEM_OPERATION = "SYSTEM_OPERATION"
     AUTOMATION_OPERATION = "AUTOMATION_OPERATION"
+    WEB_SEARCH = "WEB_SEARCH"
+    CALENDAR_OPERATION = "CALENDAR_OPERATION"
+    KUBERNETES_OPERATION = "KUBERNETES_OPERATION"
 
 
 # ── Keyword rules (checked in order; first match wins) ────────────────────────
@@ -83,6 +86,33 @@ _RULES: list[tuple[Intent, list[str]]] = [
             r"\b(trigger|enable|disable|create|delete)\b.*(job|automation|schedule)\b",
             r"\bwhat jobs\b",
             r"\brun (every|daily|weekly|hourly)\b",
+        ],
+    ),
+    (
+        Intent.WEB_SEARCH,
+        [
+            r"\b(search (the )?web|google|look (it )?up online|search online)\b",
+            r"\b(latest|current|today.s|recent)\b.*(news|price|weather|score|update)\b",
+            r"\bwhat.s (happening|the (latest|news))\b",
+        ],
+    ),
+    (
+        Intent.KUBERNETES_OPERATION,
+        [
+            r"\b(kubernetes|kubectl|k8s|pod|pods|namespace|deployment|cluster)\b",
+            r"\b(check|list|show|get|describe)\b.*(pod|namespace|deployment|node|cluster)\b",
+            r"\b(pod|namespace|deployment|node)\b.*(status|health|logs?|running|failed)\b",
+            r"\bkube(rnetes)? (context|config|cluster)\b",
+        ],
+    ),
+    (
+        Intent.CALENDAR_OPERATION,
+        [
+            r"\b(calendar|schedule|agenda|appointment|meeting|event)\b",
+            r"\bwhat.s (on|happening) (today|tomorrow|this week)\b",
+            r"\b(today.s|tomorrow.s|this week.s) (events?|meetings?|schedule)\b",
+            r"\bdo i have (any )?(meetings?|appointments?|events?)\b",
+            r"\bmorning briefing\b",
         ],
     ),
 ]

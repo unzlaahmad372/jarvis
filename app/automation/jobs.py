@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.automation.scheduler import (
     CEILING_READ_ONLY,
     OVERLAP_SKIP,
+    APSchedulerBackend,
     AutomationScheduler,
     FakeSchedulerBackend,
     JobSpec,
@@ -23,24 +24,59 @@ from app.db.models import AutomationExecution, AutomationJob
 
 logger = get_logger(__name__)
 
-# Module-level singleton scheduler (replaced in tests via dependency injection)
+# Module-level singletons (replaced in tests via dependency injection)
 _scheduler: AutomationScheduler | None = None
+_executor_fn: Any | None = None
 
 
 def get_scheduler() -> AutomationScheduler:
     global _scheduler
     if _scheduler is None:
         settings = get_settings()
-        backend = FakeSchedulerBackend()  # Real APScheduler backend added in future milestone
+        try:
+            backend = APSchedulerBackend(executor_fn=_executor_fn)
+        except ImportError:
+            logger.warning("apscheduler_not_installed", fallback="FakeSchedulerBackend")
+            backend = FakeSchedulerBackend()  # type: ignore[assignment]
         _scheduler = AutomationScheduler(backend, max_jobs=settings.automation_max_jobs)
         _scheduler.start()
     return _scheduler
 
 
+def init_executor(
+    tool_registry: Any,
+    tool_executor: Any,
+    orchestrator: Any,
+    session_factory: Any,
+) -> None:
+    """Wire the AutomationExecutor into the scheduler.
+
+    Called once from lifespan after the orchestrator is built.
+    If the scheduler is already running, replaces executor_fn on the backend.
+    """
+    global _executor_fn
+    from app.automation.executor import AutomationExecutor
+
+    sched = get_scheduler()
+    auto_exec = AutomationExecutor(
+        scheduler=sched,
+        tool_registry=tool_registry,
+        tool_executor=tool_executor,
+        orchestrator=orchestrator,
+        session_factory=session_factory,
+    )
+    _executor_fn = auto_exec.run_job
+    # Patch the backend's executor_fn so future job fires use it
+    if hasattr(sched._backend, "_executor_fn"):
+        sched._backend._executor_fn = _executor_fn  # type: ignore[union-attr]
+    logger.info("automation_executor_wired")
+
+
 def reset_scheduler(scheduler: AutomationScheduler | None = None) -> None:
     """Replace the module-level scheduler — used in tests."""
-    global _scheduler
+    global _scheduler, _executor_fn
     _scheduler = scheduler
+    _executor_fn = None
 
 
 async def create_job(
@@ -126,8 +162,25 @@ async def record_execution_start(
     session: AsyncSession,
     job: AutomationJob,
     scheduled_time: datetime,
-) -> AutomationExecution:
-    """Persist an execution record when a job fires."""
+) -> AutomationExecution | None:
+    """Persist an execution record when a job fires.
+
+    Returns None (SKIP) when the overlap policy is SKIP and a RUNNING
+    execution already exists in the DB — survives process restarts.
+    """
+    if job.overlap_policy == OVERLAP_SKIP:
+        existing = await session.execute(
+            select(AutomationExecution)
+            .where(
+                AutomationExecution.job_id == job.id,
+                AutomationExecution.status == "RUNNING",
+            )
+            .limit(1)
+        )
+        if existing.scalar_one_or_none() is not None:
+            logger.info("automation_execution_skipped_overlap", job=job.name)
+            return None
+
     execution_id = str(uuid.uuid4())
     exec_rec = AutomationExecution(
         job_id=job.id,
